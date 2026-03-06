@@ -15,17 +15,23 @@
 
 ## REST: Auth (`/api/v1/auth/*`)
 
+Канонический auth contract для MVP фиксируется по фактической backend-реализации и текущим backend tests.
+
 ### `POST /api/v1/auth/signup`
 Request JSON:
 ```json
 { "username": "alice", "password": "secret", "email": "alice@example.com" }
 ```
 
-Текущее поведение backend (по `sea_patrol_backend/ai-docs/API_INFO.md`):
-- `200 OK`
-- Response JSON: `{ "username": "alice" }`
+Response `200 OK`:
+```json
+{ "username": "alice" }
+```
 
-Frontend-код (`sea_patrol_frontend/src/shared/api/authApi.js`) воспринимает любой `2xx` как успех и возвращает `data` как есть.
+Правила для каноники MVP:
+- `201 Created` c `{ id, username, email }` не является текущей каноникой.
+- ответ содержит только `username`;
+- duplicate username policy пока не зафиксирована как часть канонического MVP contract и будет уточняться отдельно в backend task.
 
 ### `POST /api/v1/auth/login`
 Request JSON:
@@ -33,29 +39,30 @@ Request JSON:
 { "username": "alice", "password": "secret" }
 ```
 
-Текущее поведение backend:
-- `200 OK`
-- Response JSON:
+Response `200 OK`:
 ```json
 { "username": "alice", "token": "<jwt>", "issuedAt": "...", "expiresAt": "..." }
 ```
 
-Frontend-ожидания:
-- `token` используется для сессии и WebSocket.
-- `username` используется для user state.
-- `userId` в текущем frontend-коде опционален (может быть `undefined`).
+Правила для каноники MVP:
+- `token` используется для HTTP session и WebSocket подключения;
+- `username` используется как минимальный user identity field;
+- `userId` в канонический ответ MVP не входит и не должен считаться обязательным на frontend.
 
-### Ошибки (текущее расхождение)
-Backend возвращает ошибки в виде:
+### Ошибки auth / validation / security
+Канонический формат ошибок для auth-related сценариев:
 ```json
-{ "errors": [{ "code": "SEAPATROL_...", "message": "..." }] }
+{ "errors": [{ "code": "SEAPATROL_INVALID_PASSWORD", "message": "Invalid password" }] }
 ```
 
-Frontend сейчас пытается читать `data.message` и при backend-формате часто покажет общий текст `Request failed`.
+Применение:
+- `401` — auth / unauthorized / invalid credentials / invalid JWT;
+- `400` — validation errors и прочие `ApiException` bad request cases.
 
-Рекомендация для унификации (как отдельная задача):
-- либо привести backend к `{ "message": "..." }` (минимум) в auth-ошибках,
-- либо научить frontend извлекать сообщение из `errors[0].message` (и при необходимости код).
+Правила для каноники MVP:
+- корневой `message` без `errors[]` не является каноническим форматом auth-ошибок;
+- frontend должен уметь извлекать человекочитаемое сообщение из `errors[0].message`;
+- backend code и backend tests считаются source of truth для текущего формата до отдельных согласованных изменений.
 
 ## Rooms (planned MVP)
 
@@ -63,6 +70,26 @@ Frontend сейчас пытается читать `data.message` и при bac
 - При открытии страницы лобби frontend делает первичный REST-запрос за текущим списком комнат.
 - Параллельно frontend подключает WebSocket для чата лобби и дальнейших live-обновлений списка комнат.
 - После первичной загрузки все изменения room catalog приходят через WS без polling.
+
+### Room summary payload (каноника MVP)
+
+Минимальная модель комнаты для каталога и create response:
+```json
+{
+  "id": "sandbox-1",
+  "name": "Sandbox 1",
+  "mapId": "caribbean-01",
+  "mapName": "Caribbean Sea",
+  "currentPlayers": 10,
+  "maxPlayers": 100,
+  "status": "OPEN"
+}
+```
+
+Правила:
+- `mapId` и `mapName` обязательны в room catalog contract;
+- для room catalog в MVP достаточно статусов `OPEN` и `FULL`;
+- `ROOMS_SNAPSHOT`, `ROOMS_UPDATED` и `GET /api/v1/rooms` используют один и тот же payload shape.
 
 ### REST: rooms list (planned MVP)
 
@@ -77,8 +104,24 @@ Response `200 OK` JSON (пример):
   "maxRooms": 5,
   "maxPlayersPerRoom": 100,
   "rooms": [
-    { "id": "sandbox-1", "name": "Sandbox 1", "currentPlayers": 10, "maxPlayers": 100, "status": "OPEN" },
-    { "id": "sandbox-2", "name": "Sandbox 2", "currentPlayers": 100, "maxPlayers": 100, "status": "FULL" }
+    {
+      "id": "sandbox-1",
+      "name": "Sandbox 1",
+      "mapId": "caribbean-01",
+      "mapName": "Caribbean Sea",
+      "currentPlayers": 10,
+      "maxPlayers": 100,
+      "status": "OPEN"
+    },
+    {
+      "id": "sandbox-2",
+      "name": "Sandbox 2",
+      "mapId": "caribbean-01",
+      "mapName": "Caribbean Sea",
+      "currentPlayers": 100,
+      "maxPlayers": 100,
+      "status": "FULL"
+    }
   ]
 }
 ```
@@ -90,54 +133,71 @@ Response `200 OK` JSON (пример):
 
 ### WebSocket: rooms state (planned MVP)
 
-Server → Client:
-- `ROOMS_SNAPSHOT` может отправляться автоматически при WS‑подключении (пользователь в состоянии `lobby`), но для MVP frontend не должен зависеть от него как от единственного источника первичной загрузки.
+Server -> Client:
+- `ROOMS_SNAPSHOT` может отправляться автоматически при WS-подключении пользователя в состоянии `lobby`.
 - `ROOMS_SNAPSHOT` допустимо использовать как повторную синхронизацию после подключения или реконнекта.
-- `ROOMS_SNAPSHOT` payload (пример):
+- `ROOMS_UPDATED` используется для live-обновлений room catalog после `create`, `join`, `leave`, cleanup.
+- Для MVP `ROOMS_UPDATED` не является delta-патчем: payload всегда равен полному snapshot той же формы, что и `GET /api/v1/rooms`.
+
+`ROOMS_SNAPSHOT` / `ROOMS_UPDATED` payload (пример):
 ```json
 {
   "maxRooms": 5,
   "maxPlayersPerRoom": 100,
   "rooms": [
-    { "id": "sandbox-1", "name": "Sandbox 1", "currentPlayers": 10, "maxPlayers": 100, "status": "OPEN" },
-    { "id": "sandbox-2", "name": "Sandbox 2", "currentPlayers": 100, "maxPlayers": 100, "status": "FULL" }
+    {
+      "id": "sandbox-1",
+      "name": "Sandbox 1",
+      "mapId": "caribbean-01",
+      "mapName": "Caribbean Sea",
+      "currentPlayers": 10,
+      "maxPlayers": 100,
+      "status": "OPEN"
+    }
   ]
 }
 ```
-- `ROOMS_UPDATED` payload: либо полный список (как `ROOMS_SNAPSHOT`), либо delta-патч (определим позже; для MVP можно слать полный список).
 
-Client → Server (опционально, если не шлём snapshot автоматически):
+Client -> Server (опционально, если snapshot не шлётся автоматически):
 ```json
 ["ROOMS_LIST", {}]
 ```
 
 ### REST: create room (planned MVP)
 
-Создание комнаты оставляем через REST (удобно для кнопки `Create` и стандартной авторизации).
+Создание комнаты остаётся через REST.
 
 Аутентификация: требуется `Authorization: Bearer <jwt>`.
 
 #### `POST /api/v1/rooms`
 Создаёт новую песочницу, если не достигнут `maxRooms`.
 
-Request JSON (опционально):
+Request JSON (все поля опциональны):
 ```json
-{ "name": "Sandbox 3" }
+{ "name": "Sandbox 3", "mapId": "caribbean-01" }
 ```
+
+Правила:
+- если `name` не передан, backend использует своё дефолтное имя комнаты;
+- если `mapId` не передан, backend использует дефолтную карту MVP;
+- если `mapId` передан, backend валидирует его по реестру доступных карт.
 
 Response `201 Created` JSON (пример):
 ```json
-{ "id": "sandbox-3", "name": "Sandbox 3", "currentPlayers": 0, "maxPlayers": 100, "status": "OPEN" }
+{
+  "id": "sandbox-3",
+  "name": "Sandbox 3",
+  "mapId": "caribbean-01",
+  "mapName": "Caribbean Sea",
+  "currentPlayers": 0,
+  "maxPlayers": 100,
+  "status": "OPEN"
+}
 ```
 
-Ошибки (черновик):
-- `409` — достигнут `maxRooms`.
-
-### Join flow (planned MVP)
-Т.к. в лобби уже есть WebSocket для чата лобби (`to="group:lobby"`), а список комнат читается через первичный REST snapshot, присоединение к игровой комнате планируется делать через WS-команду (см. WS section):
-- REST используется для `list/create`;
-- WS используется для чата лобби и live-обновлений room catalog;
-- WS используется для фактического перехода игрока в комнату (чтобы не разрывать соединение чата).
+Ошибки (MVP):
+- `400` -> `{ "errors": [{ "code": "INVALID_MAP_ID", "message": "Unknown mapId" }] }`
+- `409` -> `{ "errors": [{ "code": "MAX_ROOMS_REACHED", "message": "Maximum number of rooms reached" }] }`
 
 ## WebSocket: Game (`/ws/game`)
 
@@ -155,6 +215,7 @@ Backend (по документации) ожидает входящие tuple и
 
 ### Message types (пересечение по текущим описаниям)
 - Chat: `CHAT_MESSAGE`, `CHAT_JOIN`, `CHAT_LEAVE`
+- Lobby/rooms: `ROOMS_SNAPSHOT`, `ROOMS_UPDATED`, `ROOM_JOINED`, `ROOM_JOIN_REJECTED`
 - Game: `PLAYER_INPUT`, `PLAYER_JOIN`, `PLAYER_LEAVE`, `SPAWN_ASSIGNED`, `INIT_GAME_STATE`, `UPDATE_GAME_STATE`
 
 ### Planned (MVP): Rooms / lobby + join
@@ -163,8 +224,21 @@ Backend (по документации) ожидает входящие tuple и
 
 Планируемое поведение сервера:
 - при подключении WS пользователь находится в состоянии `lobby` (чат доступен, игровая комната не выбрана);
-- после выбора комнаты в лобби клиент делает REST-запрос `join`;
-- backend валидирует вход в комнату и на стороне сервера переводит активную WS-сессию пользователя на стримы выбранной комнаты.
+- lobby chat использует `to="group:lobby"`;
+- после выбора комнаты клиент делает только REST-запрос `POST /api/v1/rooms/{roomId}/join`;
+- backend валидирует room admission и наличие активной lobby WS-session;
+- после успешного `join` backend переводит текущую WS-сессию пользователя из `group:lobby` в `group:room:<roomId>`.
+
+Канонический initial join flow для MVP:
+1. Клиент открывает лобби: `GET /api/v1/rooms` и lobby WS могут стартовать параллельно.
+2. Пользователь нажимает `join` в UI лобби.
+3. Клиент вызывает `POST /api/v1/rooms/{roomId}/join`.
+4. Backend валидирует комнату и lobby WS binding.
+5. При успехе backend возвращает REST `200 OK`, затем по уже открытому WS отправляет `ROOM_JOINED`.
+6. Затем backend вычисляет spawn и отправляет `SPAWN_ASSIGNED`.
+7. Затем backend отправляет `INIT_GAME_STATE` комнаты и дальнейшие room updates.
+
+Альтернативного WS-only flow для `join` в канонике MVP нет.
 
 ### REST: room join (planned MVP)
 
@@ -180,28 +254,52 @@ Request body:
 
 Response `200 OK` JSON (пример):
 ```json
-{ "roomId": "sandbox-1", "currentPlayers": 11, "maxPlayers": 100, "status": "JOINED" }
+{
+  "roomId": "sandbox-1",
+  "mapId": "caribbean-01",
+  "mapName": "Caribbean Sea",
+  "currentPlayers": 11,
+  "maxPlayers": 100,
+  "status": "JOINED"
+}
 ```
 
-Ошибки (черновик):
-- `404` — комната не найдена.
-- `409` — комната заполнена.
-- `409` — у пользователя нет активной WS-сессии лобби, которую можно перевести в комнату.
+Ошибки (MVP):
+- `404` -> `{ "errors": [{ "code": "ROOM_NOT_FOUND", "message": "Room not found" }] }`
+- `409` -> `{ "errors": [{ "code": "ROOM_FULL", "message": "Room is full" }] }`
+- `409` -> `{ "errors": [{ "code": "LOBBY_SESSION_REQUIRED", "message": "Active lobby WebSocket session is required" }] }`
 
-Server → Client по уже открытому WS:
-- `ROOM_JOINED` payload: `{ roomId, currentPlayers, maxPlayers }`.
-- затем сервер шлёт `INIT_GAME_STATE` выбранной комнаты.
-- в случае несогласованности состояния допустим `ROOM_JOIN_REJECTED` payload: `{ roomId, reason }`.
+Server -> Client по уже открытому WS:
+- `ROOM_JOINED` payload повторяет успешный REST response:
+```json
+{
+  "roomId": "sandbox-1",
+  "mapId": "caribbean-01",
+  "mapName": "Caribbean Sea",
+  "currentPlayers": 11,
+  "maxPlayers": 100,
+  "status": "JOINED"
+}
+```
+- `ROOM_JOIN_REJECTED` payload (пример):
+```json
+{ "roomId": "sandbox-1", "reason": "FULL" }
+```
+
+Правила для `ROOM_JOIN_REJECTED`:
+- событие используется только как WS-уведомление о несогласованности или отказе текущей сессии;
+- для MVP допустимые `reason`: `FULL`, `NOT_FOUND`, `LOBBY_SESSION_REQUIRED`.
 
 Чаты (MVP):
 - Чат лобби (изолирован от комнат): `to="group:lobby"`.
-  - сервер автоматически добавляет пользователя в `group:lobby` при WS‑подключении.
-- Чат комнаты (изолирован по roomId): `to="group:room:<roomId>"`.
+  - сервер автоматически добавляет пользователя в `group:lobby` при WS-подключении.
+- Чат комнаты (изолирован по `roomId`): `to="group:room:<roomId>"`.
   - после успешного REST `join` сервер переводит пользователя из `group:lobby` в `group:room:<roomId>`.
-  - опционально (план): отдельный REST/WS flow `leave` возвращает игрока в лобби.
+  - отдельный `leave` flow не входит в канонику `TASK-004`.
+
 ### Planned (MVP): Spawn assignment
 
-Server → Client:
+Server -> Client:
 - `SPAWN_ASSIGNED`
 
 Payload (пример):
@@ -218,8 +316,11 @@ Payload (пример):
 Правила:
 - spawn/respawn координаты определяет только backend;
 - клиент не вычисляет spawn самостоятельно;
-- сообщение используется и для первого появления игрока, и для respawn (`reason = RESPAWN`);
-- после `SPAWN_ASSIGNED` сервер отправляет актуальный `INIT_GAME_STATE` и/или дальнейшие room updates.
+- `reason` в MVP фиксируется как `INITIAL | RESPAWN`;
+- initial spawn flow фиксируется как `ROOM_JOINED -> SPAWN_ASSIGNED -> INIT_GAME_STATE`;
+- respawn flow фиксируется как `SPAWN_ASSIGNED(reason=RESPAWN) -> дальнейший room snapshot/update`;
+- клиент не должен переводить локальный корабль в игровую комнату до получения `SPAWN_ASSIGNED`.
+
 ### Ключевые payload (сводно)
 - `PLAYER_INPUT`: `{ left: boolean, right: boolean, up: boolean, down: boolean }`
 - `CHAT_MESSAGE`:
@@ -252,6 +353,7 @@ Tuple:
 ## Контрольные ссылки (где править, если меняется контракт)
 - Backend REST/WS каноника: `sea_patrol_backend/ai-docs/API_INFO.md`
 - Frontend ожидания/адаптеры: `sea_patrol_frontend/ai-docs/API_INFO.md`, `sea_patrol_frontend/src/shared/ws/messageAdapter.js`, `sea_patrol_frontend/src/features/auth/model/AuthContext.jsx`
+
 
 
 

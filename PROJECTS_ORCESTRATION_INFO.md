@@ -74,21 +74,22 @@ Backend (по текущей конфигурации) разрешает origin
 - `http://localhost:4173`
 
 ## Статус согласованности документации (важно для планирования)
-Ниже — расхождения между описаниями (полезно учитывать, пока не приведём к единому контракту):
+Auth contract для MVP зафиксирован по фактической backend-реализации:
+- `POST /api/v1/auth/signup` -> `200 OK` + `{ username }`
+- `POST /api/v1/auth/login` -> `{ username, token, issuedAt, expiresAt }`
+- auth/validation/security errors -> `{ errors: [{ code, message }] }`
 
-1) **Формат ошибок REST**
-- Backend документирует формат `{ errors: [{ code, message }] }`.
-- Frontend сейчас читает `data.message` и при backend-формате показывает общий текст `Request failed`.
+Room/lobby contract для MVP теперь тоже зафиксирован на уровне orchestration:
+- lobby screen использует гибридный flow: первичный `GET /api/v1/rooms` + lobby WebSocket для live-обновлений;
+- `GET /api/v1/rooms` и WS-события `ROOMS_SNAPSHOT` / `ROOMS_UPDATED` используют один и тот же полный snapshot payload;
+- `POST /api/v1/rooms` принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
+- единственный канонический room enter flow для MVP: `POST /api/v1/rooms/{roomId}/join` -> `ROOM_JOINED` -> `SPAWN_ASSIGNED` -> `INIT_GAME_STATE`;
+- альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет.
 
-2) **Login response**
-- Backend: `{ username, token, issuedAt, expiresAt }`.
-- Frontend ожидает минимум `token` и `username`, а также пытается прочитать `userId` (может быть `undefined`).
-
-3) **Signup response / status**
-- Backend: успешный ответ описан как `200` и `{ username }`.
-- Frontend docs описывают `201` и `{ id, username, email }`.
-
-Эти пункты — хорошие кандидаты для первых задач по унификации контрактов.
+Что это означает для следующих runtime-задач:
+1. Backend room endpoints и WS events должны реализовываться ровно под этот contract.
+2. Frontend lobby UI должен считать `ROOMS_UPDATED` полным snapshot, а не delta-патчем.
+3. Frontend room init должен ждать `SPAWN_ASSIGNED` как authoritative spawn source.
 
 ## Где в коде смотреть интеграцию
 Frontend:
@@ -101,4 +102,6 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
+
 

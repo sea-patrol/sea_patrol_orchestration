@@ -24,7 +24,7 @@
 
 ## Wave 0 — Контракты и каркас
 
-### TASK-001
+### TASK-001 - done
 - `Priority`: `P0`
 - `Track`: `Shared`
 - `Depends on`: `-`
@@ -34,7 +34,7 @@
   - В `API.md` нет двусмысленности по `signup`, `login`, `errors[]`.
   - В roadmap и API нет противоречий по auth response.
 
-### TASK-002
+### TASK-002 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-001`
@@ -45,7 +45,7 @@
   - Ошибки auth отдаются в одном формате.
   - Есть backend tests на success/failure cases.
 
-### TASK-003
+### TASK-003 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-001`
