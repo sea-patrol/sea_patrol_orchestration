@@ -59,6 +59,9 @@ Response `200 OK`:
 - `401` — auth / unauthorized / invalid credentials / invalid JWT;
 - `400` — validation errors и прочие `ApiException` bad request cases.
 
+Дополнительное правило для текущего backend runtime:
+- `POST /api/v1/auth/login` может вернуть `401` + `{ "errors": [{ "code": "SEAPATROL_DUPLICATE_SESSION", "message": "Active game session already exists" }] }`, если у пользователя уже есть активная игровая WebSocket-сессия.
+
 Правила для каноники MVP:
 - корневой `message` без `errors[]` не является каноническим форматом auth-ошибок;
 - frontend должен уметь извлекать человекочитаемое сообщение из `errors[0].message`;
@@ -203,6 +206,12 @@ Response `201 Created` JSON (пример):
 
 ### Подключение и авторизация
 Endpoint: `ws://localhost:8080/ws/game?token=<jwt>`
+
+Session policy:
+- backend допускает только одну активную игровую WS-сессию на пользователя;
+- параллельное второе подключение отклоняется закрытием `POLICY_VIOLATION`, reason содержит `SEAPATROL_DUPLICATE_SESSION`;
+- reconnect в течение `game.room.reconnect-grace-period` допускается на уровне session admission;
+- полный resume room state не входит в текущую канонику `TASK-006` и остается отдельной backend задачей.
 
 ### Форматы сообщений
 Frontend умеет **получать** оба формата:
@@ -353,6 +362,8 @@ Tuple:
 ## Контрольные ссылки (где править, если меняется контракт)
 - Backend REST/WS каноника: `sea_patrol_backend/ai-docs/API_INFO.md`
 - Frontend ожидания/адаптеры: `sea_patrol_frontend/ai-docs/API_INFO.md`, `sea_patrol_frontend/src/shared/ws/messageAdapter.js`, `sea_patrol_frontend/src/features/auth/model/AuthContext.jsx`
+
+
 
 
 

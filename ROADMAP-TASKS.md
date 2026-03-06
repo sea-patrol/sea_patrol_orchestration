@@ -56,7 +56,7 @@
   - Нет падения из-за отсутствия `userId`.
   - Есть frontend tests на parsing ошибок.
 
-### TASK-004
+### TASK-004 - done
 - `Priority`: `P0`
 - `Track`: `Shared`
 - `Depends on`: `TASK-001`
@@ -66,7 +66,7 @@
   - В `API.md` есть минимальные request/response payloads.
   - Не осталось альтернативных flow для join/spawn.
 
-### TASK-005
+### TASK-005 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-004`
@@ -76,7 +76,7 @@
   - Конфигурация не захардкожена в core logic.
   - Есть дефолтные значения для dev/MVP.
 
-### TASK-006
+### TASK-006 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-004`

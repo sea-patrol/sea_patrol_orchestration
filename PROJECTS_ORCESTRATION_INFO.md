@@ -78,6 +78,7 @@ Auth contract для MVP зафиксирован по фактической ba
 - `POST /api/v1/auth/signup` -> `200 OK` + `{ username }`
 - `POST /api/v1/auth/login` -> `{ username, token, issuedAt, expiresAt }`
 - auth/validation/security errors -> `{ errors: [{ code, message }] }`
+- backend single-session policy дополняет этот контракт: active game WS-session блокирует повторный `login` и второе параллельное WS-подключение тем же пользователем
 
 Room/lobby contract для MVP теперь тоже зафиксирован на уровне orchestration:
 - lobby screen использует гибридный flow: первичный `GET /api/v1/rooms` + lobby WebSocket для live-обновлений;
@@ -90,6 +91,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 1. Backend room endpoints и WS events должны реализовываться ровно под этот contract.
 2. Frontend lobby UI должен считать `ROOMS_UPDATED` полным snapshot, а не delta-патчем.
 3. Frontend room init должен ждать `SPAWN_ASSIGNED` как authoritative spawn source.
+4. Frontend reconnect UI нельзя строить на предположении, что backend уже умеет full room resume: сейчас реализован только single-session admission + reconnect grace window.
 
 ## Где в коде смотреть интеграцию
 Frontend:
@@ -102,6 +104,8 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
+
 
 
 
