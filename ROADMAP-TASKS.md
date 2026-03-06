@@ -87,7 +87,7 @@
   - reconnect в течение 30 секунд возможен.
   - Есть тесты на duplicate login/reconnect.
 
-### TASK-007
+### TASK-007 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-004`
