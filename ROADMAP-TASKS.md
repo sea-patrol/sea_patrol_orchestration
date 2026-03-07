@@ -102,7 +102,7 @@
 
 ## Wave 1 — Лобби и жизненный цикл комнат
 
-### TASK-008
+### TASK-008 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-005`
@@ -113,7 +113,7 @@
   - Есть room registry abstraction.
   - Есть тест на создание и удаление комнаты.
 
-### TASK-009
+### TASK-009 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-008`
@@ -124,7 +124,7 @@
   - Пустой каталог и заполненный каталог корректно обрабатываются.
   - Есть integration tests.
 
-### TASK-010
+### TASK-010 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-008`
@@ -135,7 +135,7 @@
   - Комната создаётся с корректным `mapId`.
   - Ответ соответствует contract.
 
-### TASK-011
+### TASK-011 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-008`, `TASK-006`

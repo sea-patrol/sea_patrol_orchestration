@@ -82,10 +82,16 @@ Auth contract для MVP зафиксирован по фактической ba
 
 Room/lobby contract для MVP теперь тоже зафиксирован на уровне orchestration:
 - lobby screen использует гибридный flow: первичный `GET /api/v1/rooms` + lobby WebSocket для live-обновлений;
+- `GET /api/v1/rooms` уже реализован на backend как защищённый snapshot endpoint;
 - `GET /api/v1/rooms` и WS-события `ROOMS_SNAPSHOT` / `ROOMS_UPDATED` используют один и тот же полный snapshot payload;
-- `POST /api/v1/rooms` принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
+- `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
+- если имя не передано, backend генерирует `sandbox-N` / `Sandbox N`; если имя передано, `id` slugify-ится, а `name` остаётся display label;
+- до `TASK-025` backend заполняет room catalog и create room flow временным default map metadata `caribbean-01` / `Caribbean Sea`;
+- `POST /api/v1/rooms/{roomId}/join` уже реализован на backend как защищённый room admission endpoint;
+- backend стартует `/ws/game` в состоянии `lobby`, автоматически добавляет пользователя в `group:lobby`, а после успешного REST join переводит сессию в `group:room:<roomId>`;
 - единственный канонический room enter flow для MVP: `POST /api/v1/rooms/{roomId}/join` -> `ROOM_JOINED` -> `SPAWN_ASSIGNED` -> `INIT_GAME_STATE`;
-- альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет.
+- альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет;
+- текущий backend runtime пока отправляет placeholder `SPAWN_ASSIGNED` coordinates `(0.0, 0.0, 0.0)` до следующих backend задач по spawn logic.
 
 Что это означает для следующих runtime-задач:
 1. Backend room endpoints и WS events должны реализовываться ровно под этот contract.
@@ -104,6 +110,9 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
+
+
 
 
 
