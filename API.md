@@ -133,6 +133,7 @@ Response `200 OK` JSON (пример):
 - используется frontend при открытии страницы лобби как первичный snapshot;
 - не заменяет WebSocket-обновления;
 - нужен для устойчивого первого рендера lobby UI и для сценариев reconnect/reload страницы.
+- пустые комнаты исчезают из каталога после того, как в них не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя.
 
 Текущее backend-ограничение:
 - до `TASK-025` room catalog использует временное default map metadata `caribbean-01` / `Caribbean Sea` для всех активных комнат.
@@ -215,6 +216,7 @@ Session policy:
 - backend допускает только одну активную игровую WS-сессию на пользователя;
 - параллельное второе подключение отклоняется закрытием `POLICY_VIOLATION`, reason содержит `SEAPATROL_DUPLICATE_SESSION`;
 - reconnect в течение `game.room.reconnect-grace-period` допускается на уровне session admission;
+- если room после disconnect становится пустой, backend удерживает её в room catalog только на время reconnect grace и затем удаляет автоматически;
 - полный resume room state не входит в текущую канонику `TASK-006` и остается отдельной backend задачей.
 
 ### Форматы сообщений
@@ -369,6 +371,7 @@ Tuple:
 ## Контрольные ссылки (где править, если меняется контракт)
 - Backend REST/WS каноника: `sea_patrol_backend/ai-docs/API_INFO.md`
 - Frontend ожидания/адаптеры: `sea_patrol_frontend/ai-docs/API_INFO.md`, `sea_patrol_frontend/src/shared/ws/messageAdapter.js`, `sea_patrol_frontend/src/features/auth/model/AuthContext.jsx`
+
 
 
 

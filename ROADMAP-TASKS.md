@@ -146,7 +146,7 @@
   - `FULL`/`NOT_FOUND` cases отдаются корректно.
   - После success сервер переключает session binding на room.
 
-### TASK-012
+### TASK-012 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-008`

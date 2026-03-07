@@ -84,6 +84,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - lobby screen использует гибридный flow: первичный `GET /api/v1/rooms` + lobby WebSocket для live-обновлений;
 - `GET /api/v1/rooms` уже реализован на backend как защищённый snapshot endpoint;
 - `GET /api/v1/rooms` и WS-события `ROOMS_SNAPSHOT` / `ROOMS_UPDATED` используют один и тот же полный snapshot payload;
+- пустая комната удаляется из room catalog после того, как в ней не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя;
 - `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
 - если имя не передано, backend генерирует `sandbox-N` / `Sandbox N`; если имя передано, `id` slugify-ится, а `name` остаётся display label;
 - до `TASK-025` backend заполняет room catalog и create room flow временным default map metadata `caribbean-01` / `Caribbean Sea`;
@@ -97,7 +98,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 1. Backend room endpoints и WS events должны реализовываться ровно под этот contract.
 2. Frontend lobby UI должен считать `ROOMS_UPDATED` полным snapshot, а не delta-патчем.
 3. Frontend room init должен ждать `SPAWN_ASSIGNED` как authoritative spawn source.
-4. Frontend reconnect UI нельзя строить на предположении, что backend уже умеет full room resume: сейчас реализован только single-session admission + reconnect grace window.
+4. Frontend reconnect UI нельзя строить на предположении, что backend уже умеет full room resume: сейчас реализован только single-session admission + reconnect grace window, а пустая комната удерживается лишь временно на это окно.
 
 ## Где в коде смотреть интеграцию
 Frontend:
@@ -110,6 +111,7 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
 
 
 
