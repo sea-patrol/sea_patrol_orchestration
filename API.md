@@ -138,12 +138,12 @@ Response `200 OK` JSON (пример):
 Текущее backend-ограничение:
 - до `TASK-025` room catalog использует временное default map metadata `caribbean-01` / `Caribbean Sea` для всех активных комнат.
 
-### WebSocket: rooms state (planned MVP)
+### WebSocket: rooms state
 
 Server -> Client:
-- `ROOMS_SNAPSHOT` может отправляться автоматически при WS-подключении пользователя в состоянии `lobby`.
-- `ROOMS_SNAPSHOT` допустимо использовать как повторную синхронизацию после подключения или реконнекта.
-- `ROOMS_UPDATED` используется для live-обновлений room catalog после `create`, `join`, `leave`, cleanup.
+- Backend уже реализует `ROOMS_SNAPSHOT` при WS-подключении пользователя в состоянии `lobby`.
+- `ROOMS_SNAPSHOT` используется как первичная WS-синхронизация после подключения или реконнекта.
+- `ROOMS_UPDATED` уже используется для live-обновлений room catalog после `create`, `join`, `leave`, cleanup.
 - Для MVP `ROOMS_UPDATED` не является delta-патчем: payload всегда равен полному snapshot той же формы, что и `GET /api/v1/rooms`.
 
 `ROOMS_SNAPSHOT` / `ROOMS_UPDATED` payload (пример):
@@ -165,10 +165,8 @@ Server -> Client:
 }
 ```
 
-Client -> Server (опционально, если snapshot не шлётся автоматически):
-```json
-["ROOMS_LIST", {}]
-```
+Client -> Server:
+- отдельный запрос `ROOMS_LIST` не нужен для текущей backend-реализации, потому что `ROOMS_SNAPSHOT` приходит автоматически при lobby WS-connect.
 
 ### REST: create room
 
@@ -371,6 +369,7 @@ Tuple:
 ## Контрольные ссылки (где править, если меняется контракт)
 - Backend REST/WS каноника: `sea_patrol_backend/ai-docs/API_INFO.md`
 - Frontend ожидания/адаптеры: `sea_patrol_frontend/ai-docs/API_INFO.md`, `sea_patrol_frontend/src/shared/ws/messageAdapter.js`, `sea_patrol_frontend/src/features/auth/model/AuthContext.jsx`
+
 
 
 

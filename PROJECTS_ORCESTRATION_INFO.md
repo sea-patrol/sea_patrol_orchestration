@@ -84,6 +84,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - lobby screen использует гибридный flow: первичный `GET /api/v1/rooms` + lobby WebSocket для live-обновлений;
 - `GET /api/v1/rooms` уже реализован на backend как защищённый snapshot endpoint;
 - `GET /api/v1/rooms` и WS-события `ROOMS_SNAPSHOT` / `ROOMS_UPDATED` используют один и тот же полный snapshot payload;
+- backend уже отправляет `ROOMS_SNAPSHOT` при lobby WS-connect и `ROOMS_UPDATED` после `create`, `join`, `leave`, cleanup без polling;
 - пустая комната удаляется из room catalog после того, как в ней не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя;
 - `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
 - если имя не передано, backend генерирует `sandbox-N` / `Sandbox N`; если имя передано, `id` slugify-ится, а `name` остаётся display label;
@@ -111,6 +112,7 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
 
 
 
