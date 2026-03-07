@@ -227,7 +227,7 @@ Frontend **отправляет** tuple.
 Backend (по документации) ожидает входящие tuple и отправляет object.
 
 ### Message types (пересечение по текущим описаниям)
-- Chat: `CHAT_MESSAGE`, `CHAT_JOIN`, `CHAT_LEAVE`
+- Chat: `CHAT_MESSAGE`, `CHAT_JOIN`, `CHAT_LEAVE` (последние два остаются только для legacy compatibility и не управляют room membership)
 - Lobby/rooms: `ROOMS_SNAPSHOT`, `ROOMS_UPDATED`, `ROOM_JOINED`, `ROOM_JOIN_REJECTED`
 - Game: `PLAYER_INPUT`, `PLAYER_JOIN`, `PLAYER_LEAVE`, `SPAWN_ASSIGNED`, `INIT_GAME_STATE`, `UPDATE_GAME_STATE`
 
@@ -240,6 +240,7 @@ Backend (по документации) ожидает входящие tuple и
 - lobby chat использует `to="group:lobby"`;
 - после выбора комнаты клиент делает только REST-запрос `POST /api/v1/rooms/{roomId}/join`;
 - backend валидирует room admission и наличие активной lobby WS-session;
+- public chat scope определяется сервером по active session binding, а не произвольным `to` от клиента;
 - после успешного `join` backend переводит текущую WS-сессию пользователя из `group:lobby` в `group:room:<roomId>`.
 
 Канонический initial join flow для MVP:
@@ -310,6 +311,7 @@ Server -> Client по уже открытому WS:
   - сервер автоматически добавляет пользователя в `group:lobby` при WS-подключении.
 - Чат комнаты (изолирован по `roomId`): `to="group:room:<roomId>"`.
   - после успешного REST `join` сервер переводит пользователя из `group:lobby` в `group:room:<roomId>`.
+  - клиентские `CHAT_JOIN` / `CHAT_LEAVE` не считаются каноническим способом смены lobby/room scope и runtime их не использует.
   - отдельный `leave` flow не входит в канонику `TASK-004`.
 
 ### Spawn assignment
@@ -340,8 +342,9 @@ Payload (пример):
 ### Ключевые payload (сводно)
 - `PLAYER_INPUT`: `{ left: boolean, right: boolean, up: boolean, down: boolean }`
 - `CHAT_MESSAGE`:
-  - frontend → backend: `{ to: "group:lobby|group:room:<roomId>|group:<id>|user:<username>", text: string }`
-  - backend → frontend: минимум `{ from: string, text: string }`
+  - frontend → backend: `{ to: "group:lobby|group:room:<roomId>|global (legacy)|user:<username>", text: string }`
+  - backend server-authoritatively переписывает любой public target в текущий scope пользователя (`group:lobby` или `group:room:<roomId>`).
+  - backend → frontend: минимум `{ from: string, text: string, to: string }`
 - `INIT_GAME_STATE`: room/wind/players (backend-описание шире; frontend применяет минимум `players[]`)
 - `UPDATE_GAME_STATE`: patch-обновления по игрокам (frontend применяет только присутствующие поля)
 
@@ -369,6 +372,7 @@ Tuple:
 ## Контрольные ссылки (где править, если меняется контракт)
 - Backend REST/WS каноника: `sea_patrol_backend/ai-docs/API_INFO.md`
 - Frontend ожидания/адаптеры: `sea_patrol_frontend/ai-docs/API_INFO.md`, `sea_patrol_frontend/src/shared/ws/messageAdapter.js`, `sea_patrol_frontend/src/features/auth/model/AuthContext.jsx`
+
 
 
 

@@ -90,7 +90,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - если имя не передано, backend генерирует `sandbox-N` / `Sandbox N`; если имя передано, `id` slugify-ится, а `name` остаётся display label;
 - до `TASK-025` backend заполняет room catalog и create room flow временным default map metadata `caribbean-01` / `Caribbean Sea`;
 - `POST /api/v1/rooms/{roomId}/join` уже реализован на backend как защищённый room admission endpoint;
-- backend стартует `/ws/game` в состоянии `lobby`, автоматически добавляет пользователя в `group:lobby`, а после успешного REST join переводит сессию в `group:room:<roomId>`;
+- backend стартует `/ws/game` в состоянии `lobby`, автоматически добавляет пользователя в `group:lobby`, после успешного REST join переводит сессию в `group:room:<roomId>` и server-authoritatively удерживает public chat isolation между lobby и rooms;
 - единственный канонический room enter flow для MVP: `POST /api/v1/rooms/{roomId}/join` -> `ROOM_JOINED` -> `SPAWN_ASSIGNED` -> `INIT_GAME_STATE`;
 - альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет;
 - текущий backend runtime пока отправляет placeholder `SPAWN_ASSIGNED` coordinates `(0.0, 0.0, 0.0)` до следующих backend задач по spawn logic.
@@ -112,6 +112,7 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
 
 
 

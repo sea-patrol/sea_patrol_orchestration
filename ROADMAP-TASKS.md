@@ -210,7 +210,7 @@
   - Create room вызывает backend endpoint.
   - UI обновляет room catalog после success.
 
-### TASK-017A
+### TASK-017A - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-011`, `TASK-013`
@@ -222,7 +222,7 @@
   - Сообщения из одной комнаты не попадают в другую комнату.
   - Есть backend tests на lobby chat и room chat isolation.
 
-### TASK-017B
+### TASK-017B - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-015`, `TASK-016`, `TASK-017A`
@@ -234,7 +234,7 @@
   - UI явно показывает текущий chat scope: `Lobby` или `Room <roomId/name>`.
   - История lobby chat и room chat не смешивается в одном списке сообщений.
 
-### TASK-017C
+### TASK-017C - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-014`, `TASK-015`, `TASK-017`
@@ -246,7 +246,7 @@
   - На экране лобби есть room list, create/join actions, connection status и lobby chat.
   - Переход в gameplay scene происходит только после успешного room join flow.
 
-### TASK-017D
+### TASK-017D - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-016`, `TASK-017C`
@@ -705,4 +705,3 @@
 - loot/cargo/trade;
 - один базовый quest loop;
 - persistence player progress.
-
