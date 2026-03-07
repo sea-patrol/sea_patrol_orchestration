@@ -157,7 +157,7 @@
   - Комната остаётся живой, пока есть игрок в 30-секундном grace.
   - Есть tests на cleanup behavior.
 
-### TASK-013
+### TASK-013 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-008`
@@ -167,7 +167,7 @@
   - Lobby clients получают обновление без polling.
   - Payload соответствует contract.
 
-### TASK-014
+### TASK-014 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-004`, `TASK-007`
@@ -178,7 +178,7 @@
   - Комнаты отображаются списком.
   - Empty state читаем и понятен.
 
-### TASK-015
+### TASK-015 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-014`
@@ -189,7 +189,7 @@
   - Изменения списка комнат обновляют UI.
   - Есть reconnect/status UI.
 
-### TASK-016
+### TASK-016 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-014`, `TASK-015`, `TASK-011`
@@ -200,7 +200,7 @@
   - Ошибки join показываются пользователю.
   - После success UI переходит к room init flow.
 
-### TASK-017
+### TASK-017 - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-015`
@@ -209,6 +209,53 @@
 - `Acceptance`:
   - Create room вызывает backend endpoint.
   - UI обновляет room catalog после success.
+
+### TASK-017A
+- `Priority`: `P0`
+- `Track`: `Backend`
+- `Depends on`: `TASK-011`, `TASK-013`
+- `Goal`: Довести chat isolation до явного runtime behavior на backend.
+- `Scope`: Зафиксировать и при необходимости исправить маршрутизацию сообщений между `group:lobby` и `group:room:<roomId>`, исключить утечки сообщений между комнатами и добавить интеграционные тесты на scoped chat.
+- `Acceptance`:
+  - Игрок в `lobby` получает только lobby chat.
+  - Игрок в комнате получает только chat своей комнаты.
+  - Сообщения из одной комнаты не попадают в другую комнату.
+  - Есть backend tests на lobby chat и room chat isolation.
+
+### TASK-017B
+- `Priority`: `P0`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-015`, `TASK-016`, `TASK-017A`
+- `Goal`: Переключить chat UI на явные `Lobby` и `Room` scope.
+- `Scope`: Убрать ощущение одного глобального чата; `ChatPanel` должен показывать текущую область общения, читать lobby chat только в лобби, а room chat только после входа в комнату.
+- `Acceptance`:
+  - В лобби пользователь видит и отправляет сообщения только в lobby chat.
+  - После `join` пользователь видит и отправляет сообщения только в chat своей комнаты.
+  - UI явно показывает текущий chat scope: `Lobby` или `Room <roomId/name>`.
+  - История lobby chat и room chat не смешивается в одном списке сообщений.
+
+### TASK-017C
+- `Priority`: `P0`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-014`, `TASK-015`, `TASK-017`
+- `Goal`: Вынести лобби в отдельную лёгкую HTML-first страницу без 3D-сцены.
+- `Scope`: Собрать отдельный lobby shell/page без `Canvas`, R3F и загрузки gameplay scene; оставить только список комнат, create/join actions, статус соединения и lobby chat.
+- `Acceptance`:
+  - При открытии лобби не монтируется 3D-сцена.
+  - Lobby page остаётся простой и лаконичной HTML-страницей.
+  - На экране лобби есть room list, create/join actions, connection status и lobby chat.
+  - Переход в gameplay scene происходит только после успешного room join flow.
+
+### TASK-017D
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-016`, `TASK-017C`
+- `Goal`: Развести navigation flow `Home -> Lobby -> Room` и отделить lobby shell от gameplay shell.
+- `Scope`: Явно разделить домашнюю страницу, лобби и экран комнаты/игры, чтобы пользователь не оказывался в лобби поверх уже поднятой игровой сцены.
+- `Acceptance`:
+  - Переход на lobby не поднимает gameplay scene.
+  - Переход в room/game происходит только после завершения join/init flow.
+  - Пользователю понятны состояния `Home`, `Lobby`, `Room` и переходы между ними.
 
 ---
 
@@ -658,3 +705,4 @@
 - loot/cargo/trade;
 - один базовый quest loop;
 - persistence player progress.
+
