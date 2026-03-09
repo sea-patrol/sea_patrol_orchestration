@@ -133,7 +133,7 @@ Response `200 OK` JSON (пример):
 - используется frontend при открытии страницы лобби как первичный snapshot;
 - не заменяет WebSocket-обновления;
 - нужен для устойчивого первого рендера lobby UI и для сценариев reconnect/reload страницы.
-- пустые комнаты исчезают из каталога после того, как в них не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя.
+- пустые комнаты исчезают из каталога не сразу: после того как в них не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя, backend ещё ждёт отдельный empty-room idle timeout.
 
 Текущее backend-ограничение:
 - до `TASK-025` room catalog использует временное default map metadata `caribbean-01` / `Caribbean Sea` для всех активных комнат.
@@ -214,7 +214,7 @@ Session policy:
 - backend допускает только одну активную игровую WS-сессию на пользователя;
 - параллельное второе подключение отклоняется закрытием `POLICY_VIOLATION`, reason содержит `SEAPATROL_DUPLICATE_SESSION`;
 - reconnect в течение `game.room.reconnect-grace-period` (MVP default: `15s`) допускается и восстанавливает прежнюю room binding;
-- если room после disconnect становится пустой, backend удерживает retained player/runtime state в этой комнате на время reconnect grace и удаляет комнату только после final cleanup по timeout;
+- если room после disconnect становится пустой, backend удерживает retained player/runtime state в этой комнате на время reconnect grace, затем переводит её в `currentPlayers = 0`, а окончательно удаляет только после отдельного empty-room idle timeout;
 - при успешном reconnect backend повторно шлёт `ROOM_JOINED` и `INIT_GAME_STATE`, но не эмитит новый `SPAWN_ASSIGNED`.
 
 ### Форматы сообщений
@@ -373,6 +373,8 @@ Tuple:
 ## Контрольные ссылки (где править, если меняется контракт)
 - Backend REST/WS каноника: `sea_patrol_backend/ai-docs/API_INFO.md`
 - Frontend ожидания/адаптеры: `sea_patrol_frontend/ai-docs/API_INFO.md`, `sea_patrol_frontend/src/shared/ws/messageAdapter.js`, `sea_patrol_frontend/src/features/auth/model/AuthContext.jsx`
+
+
 
 
 

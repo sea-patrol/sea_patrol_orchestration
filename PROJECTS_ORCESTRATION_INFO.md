@@ -85,8 +85,8 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - `GET /api/v1/rooms` уже реализован на backend как защищённый snapshot endpoint;
 - `GET /api/v1/rooms` и WS-события `ROOMS_SNAPSHOT` / `ROOMS_UPDATED` используют один и тот же полный snapshot payload;
 - backend уже отправляет `ROOMS_SNAPSHOT` при lobby WS-connect и `ROOMS_UPDATED` после `create`, `join`, `leave`, cleanup без polling;
-- пустая комната удаляется из room catalog после того, как в ней не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя;
-- `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
+- пустая комната удаляется из room catalog не сразу: после того, как в ней не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя, backend ещё выдерживает отдельный empty-room idle timeout;
+- `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;\n- текущий frontend UX может сразу после successful `POST /api/v1/rooms` запускать `POST /api/v1/rooms/{roomId}/join`, поэтому create room и room entry уже могут быть одной пользовательской операцией без отдельного промежуточного шага в UI;
 - если имя не передано, backend генерирует `sandbox-N` / `Sandbox N`; если имя передано, `id` slugify-ится, а `name` остаётся display label;
 - до `TASK-025` backend заполняет room catalog и create room flow временным default map metadata `caribbean-01` / `Caribbean Sea`;
 - `POST /api/v1/rooms/{roomId}/join` уже реализован на backend как защищённый room admission endpoint;
@@ -112,6 +112,8 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
+
 
 
 
