@@ -84,7 +84,7 @@
 - `Scope`: Один пользователь = одна игровая сессия; duplicate login запрещён, кроме reconnect window.
 - `Acceptance`:
   - Повторная параллельная сессия отклоняется.
-  - reconnect в течение 30 секунд возможен.
+  - reconnect в течение 15 секунд возможен.
   - Есть тесты на duplicate login/reconnect.
 
 ### TASK-007 - done
@@ -154,7 +154,7 @@
 - `Scope`: Комната закрывается, когда нет активных игроков и нет игроков в reconnect grace.
 - `Acceptance`:
   - Пустая комната удаляется из registry.
-  - Комната остаётся живой, пока есть игрок в 30-секундном grace.
+  - Комната остаётся живой, пока есть игрок в 15-секундном grace.
   - Есть tests на cleanup behavior.
 
 ### TASK-013 - done
@@ -261,7 +261,7 @@
 
 ## Wave 2 — Spawn, reconnect, room init
 
-### TASK-018
+### TASK-018 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-011`
@@ -272,7 +272,7 @@
   - Spawn лежит в допустимых bounds.
   - Есть тест на диапазон координат.
 
-### TASK-019
+### TASK-019 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-018`
@@ -283,7 +283,7 @@
   - Сообщение уходит при respawn.
   - Payload соответствует API contract.
 
-### TASK-020
+### TASK-020 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-019`, `TASK-016`
@@ -293,18 +293,18 @@
   - Клиент не рандомит spawn самостоятельно.
   - Initial spawn и respawn применяются корректно.
 
-### TASK-021
+### TASK-021 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-006`, `TASK-011`
 - `Goal`: Реализовать reconnect grace state.
-- `Scope`: После disconnect удерживать session 30 секунд и позволять resume той же комнаты.
+- `Scope`: После disconnect удерживать session 15 секунд и позволять resume той же комнаты.
 - `Acceptance`:
   - Session не удаляется мгновенно.
   - Reconnect within grace работает.
   - После timeout session удаляется.
 
-### TASK-022
+### TASK-022 - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-021`, `TASK-020`
@@ -705,3 +705,7 @@
 - loot/cargo/trade;
 - один базовый quest loop;
 - persistence player progress.
+
+
+
+

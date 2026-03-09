@@ -93,13 +93,13 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - backend стартует `/ws/game` в состоянии `lobby`, автоматически добавляет пользователя в `group:lobby`, после успешного REST join переводит сессию в `group:room:<roomId>` и server-authoritatively удерживает public chat isolation между lobby и rooms;
 - единственный канонический room enter flow для MVP: `POST /api/v1/rooms/{roomId}/join` -> `ROOM_JOINED` -> `SPAWN_ASSIGNED` -> `INIT_GAME_STATE`;
 - альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет;
-- текущий backend runtime пока отправляет placeholder `SPAWN_ASSIGNED` coordinates `(0.0, 0.0, 0.0)` до следующих backend задач по spawn logic.
+- initial spawn для current runtime уже вычисляется только backend'ом как random offset вокруг `(0, 0)` и проверяется по MVP bounds `x/z in [-30.0, 30.0]`, а transport shape `SPAWN_ASSIGNED` уже переиспользуется и для server-side respawn path с `reason=RESPAWN`.
 
 Что это означает для следующих runtime-задач:
 1. Backend room endpoints и WS events должны реализовываться ровно под этот contract.
 2. Frontend lobby UI должен считать `ROOMS_UPDATED` полным snapshot, а не delta-патчем.
 3. Frontend room init должен ждать `SPAWN_ASSIGNED` как authoritative spawn source.
-4. Frontend reconnect UI нельзя строить на предположении, что backend уже умеет full room resume: сейчас реализован только single-session admission + reconnect grace window, а пустая комната удерживается лишь временно на это окно.
+4. Frontend reconnect UI уже может опираться на backend room resume в пределах `game.room.reconnect-grace-period` (MVP default: `15s`): при reconnect backend восстанавливает ту же room binding и повторно шлёт `ROOM_JOINED` + `INIT_GAME_STATE`, а после истечения окна переводит пользователя в новый lobby session flow.
 
 ## Где в коде смотреть интеграцию
 Frontend:
@@ -112,6 +112,9 @@ Backend:
 - Security/public routes: `sea_patrol_backend/src/main/java/ru/sea/patrol/config/WebSecurityConfig.java`
 - WebSocket handler: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/game/GameWebSocketHandler.java`
 - WS types/DTO: `sea_patrol_backend/src/main/java/ru/sea/patrol/ws/protocol/MessageType.java`
+
+
+
 
 
 

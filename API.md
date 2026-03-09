@@ -213,9 +213,9 @@ Endpoint: `ws://localhost:8080/ws/game?token=<jwt>`
 Session policy:
 - backend допускает только одну активную игровую WS-сессию на пользователя;
 - параллельное второе подключение отклоняется закрытием `POLICY_VIOLATION`, reason содержит `SEAPATROL_DUPLICATE_SESSION`;
-- reconnect в течение `game.room.reconnect-grace-period` допускается на уровне session admission;
-- если room после disconnect становится пустой, backend удерживает её в room catalog только на время reconnect grace и затем удаляет автоматически;
-- полный resume room state не входит в текущую канонику `TASK-006` и остается отдельной backend задачей.
+- reconnect в течение `game.room.reconnect-grace-period` (MVP default: `15s`) допускается и восстанавливает прежнюю room binding;
+- если room после disconnect становится пустой, backend удерживает retained player/runtime state в этой комнате на время reconnect grace и удаляет комнату только после final cleanup по timeout;
+- при успешном reconnect backend повторно шлёт `ROOM_JOINED` и `INIT_GAME_STATE`, но не эмитит новый `SPAWN_ASSIGNED`.
 
 ### Форматы сообщений
 Frontend умеет **получать** оба формата:
@@ -337,7 +337,8 @@ Payload (пример):
 - initial spawn flow фиксируется как `ROOM_JOINED -> SPAWN_ASSIGNED -> INIT_GAME_STATE`;
 - respawn flow фиксируется как `SPAWN_ASSIGNED(reason=RESPAWN) -> дальнейший room snapshot/update`;
 - клиент не должен переводить локальный корабль в игровую комнату до получения `SPAWN_ASSIGNED`;
-- в текущем backend runtime initial `SPAWN_ASSIGNED` отправляется с placeholder coordinates `(0.0, 0.0, 0.0)` до отдельных задач по spawn logic.
+- initial spawn вычисляется backend'ом как random offset вокруг `(0, 0)` и валидируется по текущим MVP bounds `x/z in [-30.0, 30.0]`;
+- backend transport path для `RESPAWN` использует тот же payload shape и тот же server-authoritative spawn calculation, даже если полноценный death/combat caller остаётся задачей следующих wave'ов.
 
 ### Ключевые payload (сводно)
 - `PLAYER_INPUT`: `{ left: boolean, right: boolean, up: boolean, down: boolean }`
@@ -372,6 +373,9 @@ Tuple:
 ## Контрольные ссылки (где править, если меняется контракт)
 - Backend REST/WS каноника: `sea_patrol_backend/ai-docs/API_INFO.md`
 - Frontend ожидания/адаптеры: `sea_patrol_frontend/ai-docs/API_INFO.md`, `sea_patrol_frontend/src/shared/ws/messageAdapter.js`, `sea_patrol_frontend/src/features/auth/model/AuthContext.jsx`
+
+
+
 
 
 
