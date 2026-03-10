@@ -350,391 +350,499 @@
   - UI показывает ошибки как create-, так и последующего join-шага, если один из них не прошёл.
   - Create-and-join flow не оставляет пустую комнату висеть бесконечно, если auto-join не завершился.
 
-## Wave 3 — Карты и статические данные
+## Wave 3 — Карты, шаблоны мира и in-memory каталоги
 
 ### TASK-023
 - `Priority`: `P0`
 - `Track`: `Backend`
-- `Depends on`: `TASK-005`
-- `Goal`: Подключить `Liquibase` как единственный механизм миграций.
-- `Scope`: Добавить базовую структуру changelog для schema/reference/dev seeds.
+- `Depends on`: `TASK-010`
+- `Goal`: Ввести `MapTemplateRegistry` как in-memory реестр карт.
+- `Scope`: Загружать world templates из `src/main/resources/worlds/*`, валидировать их и держать в памяти без БД.
 - `Acceptance`:
-  - Backend поднимает БД через Liquibase.
-  - Changelog структура заведена и документирована.
+  - Registry умеет `list/get/default map`.
+  - Битая карта не попадает в available maps.
+  - Для работы registry не нужен `H2`.
 
 ### TASK-024
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-023`
-- `Goal`: Создать базовую schema для MVP persistence.
-- `Scope`: Завести `users`, `ships`, `user_state`, `ship_cargo`, `quests`, `map_templates`.
+- `Goal`: Добавить первую рабочую карту `caribbean-01`.
+- `Scope`: Подготовить минимальный пакет файлов карты: `manifest`, `bounds/colliders`, `spawn-points`, `poi`, `minimap` metadata, default wind settings.
 - `Acceptance`:
-  - Таблицы создаются Liquibase changelog'ом.
-  - Есть техническая проверка на startup.
+  - Карта проходит validation.
+  - Комнату можно создать с `mapId = caribbean-01`.
+  - У карты есть enough metadata для лобби и room bootstrap.
 
 ### TASK-025
-- `Priority`: `P0`
+- `Priority`: `P1`
 - `Track`: `Backend`
 - `Depends on`: `TASK-023`
-- `Goal`: Ввести `MapTemplateRegistry`.
-- `Scope`: Загружать world templates из `src/main/resources/worlds/*` и держать in-memory registry.
+- `Goal`: Добавить техническую карту `test-sandbox-01`.
+- `Scope`: Простая dev/debug карта для проверки spawn, POI, ветра, интерактивных объектов и боевых сценариев.
 - `Acceptance`:
-  - Registry умеет list/get/default map.
-  - Битая карта не попадает в available maps.
+  - Карта зарегистрирована в `MapTemplateRegistry`.
+  - Её можно использовать для dev/debug комнат.
 
 ### TASK-026
 - `Priority`: `P0`
 - `Track`: `Backend`
-- `Depends on`: `TASK-025`
-- `Goal`: Добавить первую рабочую карту `caribbean-01`.
-- `Scope`: Создать минимальный пакет файлов карты: `manifest`, `colliders`, `spawn-points`, `poi`, `minimap`.
+- `Depends on`: `TASK-023`, `TASK-008`
+- `Goal`: Привязать room bootstrap к map template.
+- `Scope`: При создании комнаты брать из карты world bounds, spawn rules, room metadata и initial wind defaults.
 - `Acceptance`:
-  - Карта проходит validation.
-  - Комнату можно создать с `mapId = caribbean-01`.
+  - Room runtime знает, из какого map template он создан.
+  - `INIT_GAME_STATE`/room metadata опираются на данные карты.
+  - Карта становится реальным source of truth для room bootstrap.
 
 ### TASK-027
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-025`
-- `Goal`: Добавить техническую карту `test-sandbox-01`.
-- `Scope`: Простая тестовая карта с несколькими объектами для spawn/POI/trade/loot testing.
+- `Depends on`: `TASK-023`
+- `Goal`: Ввести in-memory static catalogs без БД.
+- `Scope`: Загружать из backend resources ship classes, item catalog, merchant catalog, quest definitions и другие static definitions, не подключая `H2`.
 - `Acceptance`:
-  - Карта зарегистрирована.
-  - Её можно использовать для dev/debug комнат.
+  - Static catalogs доступны через runtime registry/services.
+  - Пустой стенд поднимается и работает только на in-memory данных + resource files.
+  - Нет зависимости на `Liquibase`/`H2` в основных игровых flow.
 
 ### TASK-028
 - `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-023`
-- `Goal`: Засидировать static catalogs.
-- `Scope`: Seed'ы для ship classes, item catalog, map templates, merchant catalog, quest definitions.
+- `Track`: `Frontend`
+- `Depends on`: `TASK-024`, `TASK-014`
+- `Goal`: Показывать map metadata в лобби.
+- `Scope`: Отображать `mapName`, `region` и preview placeholder в room list и create room UI.
 - `Acceptance`:
-  - Пустая БД после старта пригодна для MVP flow.
-  - Seed idempotent.
+  - Пользователь видит, на какой карте создана комната.
+  - Lobby UI не скрывает map context за общим названием комнаты.
 
 ### TASK-029
 - `Priority`: `P1`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-014`, `TASK-026`
-- `Goal`: Показывать информацию о карте в лобби.
-- `Scope`: Отображать `mapName`/region/preview placeholder в списке комнат и create room UI.
+- `Depends on`: `TASK-026`, `TASK-016`, `TASK-028`
+- `Goal`: Добавить room loading summary перед входом в море.
+- `Scope`: На `ROOM_LOADING`/join-init этапе показывать карту, room name, текущий статус входа и базовую room metadata до монтирования gameplay scene.
 - `Acceptance`:
-  - Пользователь видит, на какой карте создана комната.
-  - Выбор карты не ломает create room flow.
+  - При входе в комнату пользователь видит понятный loading summary.
+  - Room loading screen использует map/room metadata из backend contract.
 
 ---
 
-## Wave 4 — Базовый room simulation и HUD foundation
+## Wave 4 — Ветер, паруса и движение корабля
 
 ### TASK-030
 - `Priority`: `P0`
-- `Track`: `Frontend`
-- `Depends on`: `TASK-007`, `TASK-020`
-- `Goal`: Собрать базовый in-game HUD layout.
-- `Scope`: Разместить `PlayerStatusCard`, `ChatPanel`, `GameMenuButton`, `CompassMiniMapCluster`, inventory/journal buttons.
+- `Track`: `Shared`
+- `Depends on`: `TASK-026`
+- `Goal`: Зафиксировать канонический wind contract для MVP.
+- `Scope`: Уточнить в orchestration docs payload и семантику `wind` (`angle`, `speed`), место доставки в `INIT_GAME_STATE` / `UPDATE_GAME_STATE` и простую policy изменения ветра по часовой стрелке.
 - `Acceptance`:
-  - HUD живёт поверх canvas.
-  - Layout работает в `SAILING` mode.
+  - В `API.md` нет двусмысленности по wind payload.
+  - Frontend/backend одинаково понимают угол, скорость и update semantics.
 
 ### TASK-031
-- `Priority`: `P1`
-- `Track`: `Frontend`
-- `Depends on`: `TASK-030`
-- `Goal`: Реализовать `CHAT_FOCUS` и `WINDOW_FOCUS` behavior.
-- `Scope`: Горячие клавиши и блокировка ship input при chat/window focus.
+- `Priority`: `P0`
+- `Track`: `Backend`
+- `Depends on`: `TASK-030`, `TASK-026`
+- `Goal`: Ввести authoritative wind state в комнате.
+- `Scope`: Каждая комната хранит текущий `wind.angle` и `wind.speed`, а backend включает эти данные в `INIT_GAME_STATE` и `UPDATE_GAME_STATE`.
 - `Acceptance`:
-  - Chat input не конфликтует с ship controls.
-  - Большие окна блокируют ship input.
+  - Клиент получает wind state из backend.
+  - Один и тот же wind state согласован для всех игроков комнаты.
 
 ### TASK-032
-- `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-008`
-- `Goal`: Ввести base entity transport model.
-- `Scope`: Зафиксировать минимальные server events для entity spawn/update/despawn внутри комнаты.
+- `Priority`: `P0`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-031`
+- `Goal`: Научить frontend применять backend wind state.
+- `Scope`: Поднять `wind` в game state клиента и убрать локальные/заглушечные источники ветра из runtime path.
 - `Acceptance`:
-  - Есть единый подход для world entities beyond players.
-  - Contract задокументирован и применим к crates/NPC/projectiles.
+  - Frontend использует только backend wind state.
+  - Изменение ветра реально доходит до UI/runtime state.
 
 ### TASK-033
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-032`, `TASK-026`
-- `Goal`: Добавить тестовые world objects на карте.
-- `Scope`: Поднять на тестовой/основной карте несколько POI и интерактивных сущностей с `CIRCLE/RECTANGLE` geometry.
+- `Depends on`: `TASK-031`
+- `Goal`: Перевести логику движения парусника на зависимость от ветра.
+- `Scope`: Простая server-authoritative модель: тяга и ускорение судна зависят от силы ветра, направления ветра и курса корабля; пока без сложной симуляции и без продвинутой аэродинамики.
 - `Acceptance`:
-  - Объекты появляются в комнате.
-  - Их geometry загружается из template data.
-
----
-
-## Wave 5 — Боевка минимального цикла
+  - Судно движется по-разному при попутном, боковом и встречном ветре.
+  - Модель остаётся предсказуемой и тестируемой.
 
 ### TASK-034
 - `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-032`
-- `Goal`: Ввести authoritative ship combat state.
-- `Scope`: HP, max HP, reload state, minimal death/respawn transition.
+- `Track`: `Frontend`
+- `Depends on`: `TASK-032`, `TASK-033`
+- `Goal`: Показать игроку состояние ветра и отклик движения.
+- `Scope`: Добавить в HUD минимальный wind indicator и понятный feedback о том, как ветер влияет на ход корабля.
 - `Acceptance`:
-  - Ship combat state существует на backend.
-  - Потопление переводит игрока в respawn flow.
+  - Игрок видит направление и силу ветра.
+  - Изменение поведения судна не выглядит «магическим» без UI-подсказки.
 
 ### TASK-035
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-034`
-- `Goal`: Реализовать collision damage.
-- `Scope`: Простая модель урона от столкновения кораблей.
+- `Depends on`: `TASK-031`, `TASK-033`
+- `Goal`: Реализовать простое изменение ветра по часовой стрелке.
+- `Scope`: Room runtime постепенно вращает `wind.angle` по часовой стрелке с фиксированным шагом/скоростью и рассылает обновления клиентам.
 - `Acceptance`:
-  - Столкновение наносит урон.
-  - Есть тест на damage application.
+  - Ветер меняется предсказуемо и одинаково для всех игроков комнаты.
+  - Клиент видит, что направление ветра постепенно поворачивается по часовой стрелке.
+
+---
+
+## Wave 5 — Игровой экран, HUD и базовые интеракции в комнате
 
 ### TASK-036
-- `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-034`
-- `Goal`: Реализовать projectile subsystem skeleton.
-- `Scope`: `FIRE_CANNON`, projectile lifecycle, hit/despawn events без сложного баланса.
+- `Priority`: `P0`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-007`, `TASK-020`, `TASK-032`
+- `Goal`: Собрать понятный базовый in-game HUD.
+- `Scope`: Разместить player status, room chat, wind indicator, menu button и quick-access кнопки поверх canvas.
 - `Acceptance`:
-  - Projectile spawn/hit/despawn работает.
-  - Сервер остаётся authoritative.
+  - HUD живёт поверх gameplay scene.
+  - В `SAILING` mode пользователь видит основной игровой интерфейс.
 
 ### TASK-037
 - `Priority`: `P1`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-034`, `TASK-030`
-- `Goal`: Показать combat state в HUD.
-- `Scope`: HP, reload, боезапас, respawn/reconnect indicators.
+- `Depends on`: `TASK-036`
+- `Goal`: Довести поведение `CHAT_FOCUS` и `WINDOW_FOCUS`.
+- `Scope`: Горячие клавиши, блокировка ship input и переключение фокуса между chat/window/gameplay без конфликтов.
 - `Acceptance`:
-  - PlayerStatusCard отражает combat state.
-  - Потопление и respawn видны пользователю.
+  - Chat input не конфликтует с ship controls.
+  - Большие окна блокируют обычное sailing input.
 
 ### TASK-038
 - `Priority`: `P1`
-- `Track`: `Frontend`
-- `Depends on`: `TASK-036`
-- `Goal`: Добавить projectile visuals.
-- `Scope`: Косметическая визуализация залпа, попадания и despawn.
+- `Track`: `Backend`
+- `Depends on`: `TASK-026`
+- `Goal`: Ввести базовую transport model для world entities.
+- `Scope`: Зафиксировать и реализовать server events `spawn/update/despawn` для объектов внутри комнаты beyond players.
 - `Acceptance`:
-  - Выстрелы видны в клиенте.
-  - Клиент следует authoritative backend events.
-
----
-
-## Wave 6 — Лут, cargo, торговля
+  - Есть единый transport path для POI, crates, NPC и future projectiles.
+  - У сущностей есть стабильный `entityId` в рамках жизни комнаты.
 
 ### TASK-039
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-028`, `TASK-032`
-- `Goal`: Ввести runtime cargo model.
-- `Scope`: Грузовые слоты/вместимость и операции add/remove item для ship cargo.
+- `Depends on`: `TASK-038`, `TASK-024`
+- `Goal`: Добавить первые world objects и POI на карту.
+- `Scope`: Поднять на карте несколько статичных/интерактивных объектов с геометрией и runtime state, достаточных для будущих trade/loot/fishing сценариев.
 - `Acceptance`:
-  - Cargo считается на backend.
-  - Есть unit tests на inventory operations.
+  - Объекты реально появляются в комнате.
+  - Их metadata и geometry приходят из map template/resources.
 
 ### TASK-040
 - `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-032`, `TASK-033`, `TASK-039`
-- `Goal`: Реализовать floating crates.
-- `Scope`: Spawn, pickup, despawn, respawn по минимальному lifecycle.
+- `Track`: `Frontend`
+- `Depends on`: `TASK-038`, `TASK-039`
+- `Goal`: Показать игроку базовые room interactions.
+- `Scope`: Ввести prompts/markers для nearby POI и интерактивных объектов без полноценных окон конкретных механик.
 - `Acceptance`:
-  - Ящики появляются на карте.
-  - Игрок может поднять их server-authoritatively.
+  - Игрок понимает, что рядом есть интерактивный объект.
+  - UI не требует догадок о том, где доступно действие.
 
 ### TASK-041
 - `Priority`: `P1`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-040`, `TASK-030`
-- `Goal`: Добавить inventory window skeleton.
-- `Scope`: Окно инвентаря/трюма и отображение предметов/количеств.
+- `Depends on`: `TASK-036`
+- `Goal`: Подготовить крупные игровые окна.
+- `Scope`: Сделать shell-окна `Inventory`, `Journal`, `Map` с открытием/закрытием, layout и hotkeys, пока без полного наполнения данными.
 - `Acceptance`:
-  - Inventory window открывается по hotkey/button.
-  - Cargo state отображается в UI.
+  - Окна открываются и закрываются предсказуемо.
+  - `WINDOW_FOCUS` работает с ними как с полноценными UI-режимами.
+
+---
+
+## Wave 6 — Боевка и respawn loop
 
 ### TASK-042
 - `Priority`: `P1`
-- `Track`: `Frontend`
-- `Depends on`: `TASK-040`
-- `Goal`: Показать prompts взаимодействия с loot.
-- `Scope`: Подсказки/индикаторы при возможности pickup.
+- `Track`: `Backend`
+- `Depends on`: `TASK-033`, `TASK-038`
+- `Goal`: Ввести authoritative ship combat state.
+- `Scope`: Добавить `HP`, `maxHP`, reload/cooldown state и минимальный death/sunk transition на backend.
 - `Acceptance`:
-  - Игрок понимает, когда может подобрать объект.
+  - Combat state существует на backend как часть authoritative ship runtime.
+  - Потопление переводит игрока в respawn flow.
 
 ### TASK-043
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-028`, `TASK-033`, `TASK-039`
-- `Goal`: Реализовать минимального торговца.
-- `Scope`: `TRADE_OPEN`, buy/sell validation, fixed prices, merchant POI.
+- `Depends on`: `TASK-042`
+- `Goal`: Реализовать collision damage.
+- `Scope`: Простая модель урона от столкновения кораблей/объектов без сложной физики повреждений.
+- `Acceptance`:
+  - Столкновение наносит урон.
+  - Есть тест на damage application.
+
+### TASK-044
+- `Priority`: `P1`
+- `Track`: `Backend`
+- `Depends on`: `TASK-042`, `TASK-038`
+- `Goal`: Реализовать skeleton projectile subsystem.
+- `Scope`: `FIRE_CANNON`, projectile lifecycle, `spawn/hit/despawn` events и минимальная server-authoritative логика попаданий.
+- `Acceptance`:
+  - Projectile spawn/hit/despawn работает.
+  - Сервер остаётся authoritative по факту попадания.
+
+### TASK-045
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-036`, `TASK-042`
+- `Goal`: Показать combat state в HUD.
+- `Scope`: Отобразить HP, reload, ammo/боезапас и базовые combat alerts в in-game UI.
+- `Acceptance`:
+  - Игрок видит своё боевое состояние.
+  - HUD обновляется по authoritative backend data.
+
+### TASK-046
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-044`
+- `Goal`: Добавить projectile visuals и hit feedback.
+- `Scope`: Косметическая визуализация залпа, попадания и despawn, не нарушающая server-authoritative contract.
+- `Acceptance`:
+  - Выстрелы и попадания видны игроку.
+  - Клиент следует backend events, а не симулирует исход боя сам.
+
+### TASK-047
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-045`, `TASK-019`
+- `Goal`: Довести respawn UX.
+- `Scope`: Показать явный `RESPAWN` screen/mode и корректный возврат в `SAILING` после authoritative respawn/init flow.
+- `Acceptance`:
+  - Потопление и ожидание respawn понятны пользователю.
+  - Возврат в игру идёт только после backend respawn/init signals.
+
+---
+
+## Wave 7 — Трюм, лут и торговля
+
+### TASK-048
+- `Priority`: `P1`
+- `Track`: `Backend`
+- `Depends on`: `TASK-027`, `TASK-038`
+- `Goal`: Ввести runtime cargo model.
+- `Scope`: Грузовые слоты/вместимость, типы предметов и операции add/remove для ship cargo в памяти процесса.
+- `Acceptance`:
+  - Cargo считается на backend.
+  - Есть unit tests на inventory operations.
+
+### TASK-049
+- `Priority`: `P1`
+- `Track`: `Backend`
+- `Depends on`: `TASK-039`, `TASK-048`
+- `Goal`: Реализовать floating crates и базовый resource pickup.
+- `Scope`: Spawn, pickup, despawn, respawn и server-authoritative перенос ресурсов в cargo.
+- `Acceptance`:
+  - Ящики/ресурсы появляются на карте.
+  - Игрок может поднять их server-authoritatively.
+
+### TASK-050
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-041`, `TASK-048`
+- `Goal`: Наполнить inventory window реальными данными трюма.
+- `Scope`: Отображать cargo state, вместимость и базовые типы предметов в UI.
+- `Acceptance`:
+  - Inventory window показывает реальный cargo state.
+  - Пользователь видит состав трюма без dev/debug инструментов.
+
+### TASK-051
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-049`, `TASK-040`
+- `Goal`: Довести UX подбора лута.
+- `Scope`: Подсказки, success/error feedback и обновление инвентаря после pickup.
+- `Acceptance`:
+  - Игрок понимает, когда может подобрать объект.
+  - После pickup UI сразу отражает результат.
+
+### TASK-052
+- `Priority`: `P1`
+- `Track`: `Backend`
+- `Depends on`: `TASK-027`, `TASK-039`, `TASK-048`
+- `Goal`: Реализовать минимального торговца и backend trade rules.
+- `Scope`: `TRADE_OPEN`, buy/sell validation, fixed prices и merchant POI без динамической экономики.
 - `Acceptance`:
   - Торговля работает только у торговой точки.
   - Покупка/продажа валидируется сервером.
 
-### TASK-044
+### TASK-053
 - `Priority`: `P1`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-043`, `TASK-041`
+- `Depends on`: `TASK-050`, `TASK-052`
 - `Goal`: Сделать trade UI.
-- `Scope`: Окно покупки/продажи с balance/cargo feedback.
+- `Scope`: Окно покупки/продажи с balance/cargo feedback и понятными ошибками.
 - `Acceptance`:
   - Игрок может купить и продать базовые ресурсы.
   - Ошибки торговли отображаются корректно.
 
 ---
 
-## Wave 7 — NPC, рыбалка, квесты
+## Wave 8 — NPC, рыбалка и квестовый loop
 
-### TASK-045
+### TASK-054
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-028`, `TASK-032`
+- `Depends on`: `TASK-038`, `TASK-042`
 - `Goal`: Добавить базовый pirate NPC archetype.
-- `Scope`: Spawn, patrol/agro skeleton, simple attack behavior.
+- `Scope`: Spawn, patrol/agro skeleton и простое боевое поведение пирата.
 - `Acceptance`:
   - Пиратский NPC появляется в комнате.
-  - Может вступать в базовый бой.
+  - Он может вступать в базовый бой с игроком.
 
-### TASK-046
+### TASK-055
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-028`, `TASK-032`
+- `Depends on`: `TASK-038`, `TASK-048`
 - `Goal`: Добавить рыбу/рыбалку как простой interaction loop.
-- `Scope`: Fish entities, catch interaction, loot into cargo.
+- `Scope`: Fish entities или fishing spots, catch interaction и награда ресурсом в cargo.
 - `Acceptance`:
   - Игрок может получить `FISH` через world interaction.
+  - Flow не требует persistence или БД.
 
-### TASK-047
+### TASK-056
 - `Priority`: `P1`
 - `Track`: `Backend`
-- `Depends on`: `TASK-028`, `TASK-039`, `TASK-043`, `TASK-045`, `TASK-046`
+- `Depends on`: `TASK-027`, `TASK-048`, `TASK-052`, `TASK-054`, `TASK-055`
 - `Goal`: Реализовать минимальную quest system.
-- `Scope`: Один активный квест, progress tracking, rewards, completion.
+- `Scope`: Один активный квест, progress tracking, rewards и completion для нескольких простых quest archetypes.
 - `Acceptance`:
-  - Работают `deliver-wood-01`, `catch-fish-01`, `sink-pirate-01`.
+  - Работают минимум `deliver-wood-01`, `catch-fish-01`, `sink-pirate-01`.
   - Награда начисляется сервером.
 
-### TASK-048
+### TASK-057
 - `Priority`: `P1`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-047`, `TASK-030`
-- `Goal`: Добавить journal window skeleton.
-- `Scope`: Окно журнала с активным квестом и кратким прогрессом.
+- `Depends on`: `TASK-041`, `TASK-056`
+- `Goal`: Наполнить journal window квестовыми данными.
+- `Scope`: Показывать активный квест, краткий progress и completion/reward feedback.
 - `Acceptance`:
-  - Journal открывается по hotkey/button.
-  - Виден активный квест и его progress.
+  - Journal показывает текущий квест и его прогресс.
+  - Игроку понятен текущий PvE loop.
 
 ---
 
-## Wave 8 — Persistence MVP
+## Wave 9 — Навигационная карта, polish и наблюдаемость
 
-### TASK-049
-- `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-024`, `TASK-039`
-- `Goal`: Ввести repositories для user/profile/cargo persistence.
-- `Scope`: Реализовать persistence interfaces поверх H2/R2DBC.
-- `Acceptance`:
-  - User/profile/cargo можно сохранить и восстановить.
-
-### TASK-050
-- `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-049`, `TASK-021`
-- `Goal`: Реализовать save policy MVP.
-- `Scope`: Периодическое сохранение + save on disconnect + save on meaningful events.
-- `Acceptance`:
-  - Данные игрока не теряются после disconnect/server restart в ожидаемом MVP сценарии.
-
-### TASK-051
-- `Priority`: `P1`
-- `Track`: `Backend`
-- `Depends on`: `TASK-049`, `TASK-047`
-- `Goal`: Сохранять quest progress и currency.
-- `Scope`: Persistence для квестов, денег и active ship state.
-- `Acceptance`:
-  - Квест и баланс переживают restart.
-
-### TASK-052
-- `Priority`: `P1`
-- `Track`: `Frontend`
-- `Depends on`: `TASK-050`, `TASK-051`
-- `Goal`: Восстанавливать profile/session state на фронте.
-- `Scope`: После повторного входа UI показывает актуальные cargo, balance, active quest, ship profile.
-- `Acceptance`:
-  - Пользователь после relogin видит сохранённый прогресс.
-
----
-
-## Wave 9 — Карта и polish MVP
-
-### TASK-053
+### TASK-058
 - `Priority`: `P2`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-030`, `TASK-026`
-- `Goal`: Сделать minimap placeholder.
-- `Scope`: Простой compass/minimap cluster с положением игрока и базовыми POI markers.
+- `Depends on`: `TASK-036`, `TASK-026`
+- `Goal`: Сделать minimap/compass cluster.
+- `Scope`: Показать положение игрока, направление движения и базовые POI markers на компактной карте HUD.
 - `Acceptance`:
   - Миникарта видна в HUD.
   - Позиция игрока и базовые markers отображаются.
 
-### TASK-054
+### TASK-059
 - `Priority`: `P2`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-053`
+- `Depends on`: `TASK-058`, `TASK-041`
 - `Goal`: Сделать полноэкранное окно карты.
-- `Scope`: `MapWindow` с room bounds, player position и POI.
+- `Scope`: `MapWindow` с room bounds, player position, POI и текущим направлением ветра/курса.
 - `Acceptance`:
   - `M` открывает карту.
   - Карта использует данные текущей комнаты/шаблона карты.
 
-### TASK-055
+### TASK-060
 - `Priority`: `P2`
 - `Track`: `Backend`
-- `Depends on`: `TASK-032`, `TASK-040`, `TASK-045`, `TASK-046`
-- `Goal`: Добавить entity validation/test suite.
-- `Scope`: Минимальные тесты на lifecycle world entities и map template validation.
+- `Depends on`: `TASK-038`, `TASK-049`, `TASK-054`, `TASK-055`
+- `Goal`: Добавить validation/test suite для карт и сущностей.
+- `Scope`: Минимальные проверки lifecycle world entities, map template validation и sanity-check тесты интерактивных объектов.
 - `Acceptance`:
   - Карты и сущности можно валидировать отдельным прогоном.
+  - Broken data ловится до ручного тестирования в браузере.
 
-### TASK-056
+### TASK-061
 - `Priority`: `P2`
 - `Track`: `Frontend`
-- `Depends on`: `TASK-030`, `TASK-031`, `TASK-048`, `TASK-054`
+- `Depends on`: `TASK-036`, `TASK-037`, `TASK-041`, `TASK-059`
 - `Goal`: Дополировать игровые UI modes.
-- `Scope`: Финальные переходы между `SAILING`, `CHAT_FOCUS`, `WINDOW_FOCUS`, `MENU_OPEN`, `RECONNECTING`, `RESPAWN`.
+- `Scope`: Финальные переходы между `SAILING`, `CHAT_FOCUS`, `WINDOW_FOCUS`, `MENU_OPEN`, `RECONNECTING`, `RESPAWN` и большими окнами.
 - `Acceptance`:
   - UI modes не конфликтуют друг с другом.
   - Управление и окна ведут себя предсказуемо.
 
-### TASK-057
+### TASK-062
 - `Priority`: `P2`
 - `Track`: `Backend`
-- `Depends on`: `TASK-050`
+- `Depends on`: `TASK-035`, `TASK-052`, `TASK-056`
 - `Goal`: Добавить structured metrics/logging для MVP эксплуатации.
-- `Scope`: Tick lag, room count, entity count, reconnects, room cleanup, trade/quest events.
+- `Scope`: Логировать и/или метрифицировать tick lag, wind changes, room count, entity count, reconnects, combat/trade/quest events.
 - `Acceptance`:
   - Ключевые runtime события видны в логах/метриках.
+  - Проблемы room/wind/combat loop проще диагностировать.
+
+---
+
+## Wave 10 — Persistence и H2 (самая последняя волна)
+
+### TASK-063
+- `Priority`: `P2`
+- `Track`: `Backend`
+- `Depends on`: `TASK-048`, `TASK-056`
+- `Goal`: Подготовить persistence boundaries после стабилизации in-memory MVP.
+- `Scope`: Ввести repository/store interfaces для профиля, корабля, cargo и quest progress, не ломая текущий in-memory runtime.
+- `Acceptance`:
+  - Runtime-код не жёстко привязан к конкретной БД.
+  - In-memory реализация остаётся основной до подключения `H2`.
+
+### TASK-064
+- `Priority`: `P2`
+- `Track`: `Backend`
+- `Depends on`: `TASK-063`
+- `Goal`: Подключить `H2` и `Liquibase` только в самом конце.
+- `Scope`: Добавить схему, changelog'и и минимальный persistence adapter поверх `H2`/`R2DBC` для уже существующих contracts.
+- `Acceptance`:
+  - Backend поднимает БД через `Liquibase`.
+  - Схема данных соответствует уже сложившимся in-memory моделям.
+
+### TASK-065
+- `Priority`: `P2`
+- `Track`: `Backend`
+- `Depends on`: `TASK-064`, `TASK-021`
+- `Goal`: Реализовать save policy MVP.
+- `Scope`: Периодическое сохранение + save on disconnect + save on meaningful events для игрока, трюма и квестов.
+- `Acceptance`:
+  - Данные игрока не теряются после disconnect/server restart в ожидаемом сценарии.
+  - Save policy не ломает realtime/gameplay loop.
+
+### TASK-066
+- `Priority`: `P2`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-065`
+- `Goal`: Восстанавливать persistent profile/session state на фронте.
+- `Scope`: После повторного входа UI показывает актуальные cargo, balance, active quest, active ship state и last-known profile data.
+- `Acceptance`:
+  - Пользователь после relogin видит сохранённый прогресс.
+  - Persistence не ломает текущие auth/lobby/room flows.
 
 ---
 
 ## MVP Cut Line
-Если нужен самый ранний playable MVP без лишнего полиша, минимальная линия отсечения такая:
-- `TASK-001` … `TASK-022`
-- `TASK-023` … `TASK-030`
-- `TASK-034` … `TASK-044`
-- `TASK-047`
-- `TASK-049` … `TASK-052`
+Если нужен самый ранний playable MVP без БД и без лишнего полиша, минимальная линия отсечения такая:
+- `TASK-001` … `TASK-057`
+
+Опциональные поздние волны:
+- `TASK-058` … `TASK-062` — карта, UX polish и observability
+- `TASK-063` … `TASK-066` — persistence и `H2`
 
 Это даст:
 - auth;
 - lobby;
 - create/join room;
 - spawn/reconnect basics;
-- одну рабочую карту;
-- базовую боёвку;
+- карты и map templates из resource files;
+- wind-driven sailing loop;
+- базовый in-game HUD;
+- боёвку и respawn;
 - loot/cargo/trade;
-- один базовый quest loop;
-- persistence player progress.
+- NPC, рыбалку и базовый quest loop;
+- при этом все игровые структуры данных до последней волны остаются in-memory.
