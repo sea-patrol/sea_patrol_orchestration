@@ -86,9 +86,11 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - `GET /api/v1/rooms` и WS-события `ROOMS_SNAPSHOT` / `ROOMS_UPDATED` используют один и тот же полный snapshot payload;
 - backend уже отправляет `ROOMS_SNAPSHOT` при lobby WS-connect и `ROOMS_UPDATED` после `create`, `join`, `leave`, cleanup без polling;
 - пустая комната удаляется из room catalog не сразу: после того, как в ней не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя, backend ещё выдерживает отдельный empty-room idle timeout;
-- `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;\n- текущий frontend UX может сразу после successful `POST /api/v1/rooms` запускать `POST /api/v1/rooms/{roomId}/join`, поэтому create room и room entry уже могут быть одной пользовательской операцией без отдельного промежуточного шага в UI;
+- `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
+- текущий frontend UX может сразу после successful `POST /api/v1/rooms` запускать `POST /api/v1/rooms/{roomId}/join`, поэтому create room и room entry уже могут быть одной пользовательской операцией без отдельного промежуточного шага в UI;
 - если имя не передано, backend генерирует `sandbox-N` / `Sandbox N`; если имя передано, `id` slugify-ится, а `name` остаётся display label;
-- до `TASK-025` backend заполняет room catalog и create room flow временным default map metadata `caribbean-01` / `Caribbean Sea`;
+- `mapId` и `mapName` уже резолвятся через in-memory `MapTemplateRegistry`, который загружает world manifests из `src/main/resources/worlds/*`;
+- в текущем production bundle зарегистрирована только карта `caribbean-01`, поэтому room catalog и create room flow пока всё ещё используют `Caribbean Sea` для всех доступных комнат;
 - `POST /api/v1/rooms/{roomId}/join` уже реализован на backend как защищённый room admission endpoint;
 - backend стартует `/ws/game` в состоянии `lobby`, автоматически добавляет пользователя в `group:lobby`, после успешного REST join переводит сессию в `group:room:<roomId>` и server-authoritatively удерживает public chat isolation между lobby и rooms;
 - единственный канонический room enter flow для MVP: `POST /api/v1/rooms/{roomId}/join` -> `ROOM_JOINED` -> `SPAWN_ASSIGNED` -> `INIT_GAME_STATE`;

@@ -136,7 +136,8 @@ Response `200 OK` JSON (пример):
 - пустые комнаты исчезают из каталога не сразу: после того как в них не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя, backend ещё ждёт отдельный empty-room idle timeout.
 
 Текущее backend-ограничение:
-- до `TASK-025` room catalog использует временное default map metadata `caribbean-01` / `Caribbean Sea` для всех активных комнат.
+- `mapId` и `mapName` уже резолвятся через in-memory `MapTemplateRegistry`, который загружает world manifests из `src/main/resources/worlds/*`;
+- в текущем production bundle зарегистрирована только карта `caribbean-01`, поэтому room catalog пока возвращает `Caribbean Sea` для всех активных комнат.
 
 ### WebSocket: rooms state
 
@@ -185,8 +186,8 @@ Request JSON (все поля опциональны):
 Правила:
 - если `name` не передан, backend генерирует следующий `sandbox-N` и display name `Sandbox N`;
 - если `name` передан, backend строит `id` как slugified-форму имени, а `name` оставляет display label;
-- если `mapId` не передан, backend использует дефолтную карту MVP;
-- до `TASK-025` backend принимает только `mapId = caribbean-01` и валидирует остальные значения как `INVALID_MAP_ID`.
+- если `mapId` не передан, backend использует дефолтную карту MVP из `MapTemplateRegistry`;
+- backend валидирует `mapId` против своего in-memory `MapTemplateRegistry`; в текущем production bundle зарегистрирована только `caribbean-01`, поэтому остальные значения пока отбрасываются как `INVALID_MAP_ID`.
 
 Response `201 Created` JSON (пример):
 ```json

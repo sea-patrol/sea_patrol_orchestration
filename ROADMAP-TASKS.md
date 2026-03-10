@@ -352,7 +352,7 @@
 
 ## Wave 3 — Карты, шаблоны мира и in-memory каталоги
 
-### TASK-023
+### TASK-023 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-010`
