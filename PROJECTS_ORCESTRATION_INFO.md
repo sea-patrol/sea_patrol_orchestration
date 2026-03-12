@@ -89,13 +89,16 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - `POST /api/v1/rooms` уже реализован на backend и принимает опциональные `name` и `mapId`, а в ответе room catalog обязательно содержит `mapId` и `mapName`;
 - текущий frontend UX может сразу после successful `POST /api/v1/rooms` запускать `POST /api/v1/rooms/{roomId}/join`, поэтому create room и room entry уже могут быть одной пользовательской операцией без отдельного промежуточного шага в UI;
 - если имя не передано, backend генерирует `sandbox-N` / `Sandbox N`; если имя передано, `id` slugify-ится, а `name` остаётся display label;
-- `mapId` и `mapName` уже резолвятся через in-memory `MapTemplateRegistry`, который загружает world manifests из `src/main/resources/worlds/*`;
-- в текущем production bundle зарегистрирована только карта `caribbean-01`, поэтому room catalog и create room flow пока всё ещё используют `Caribbean Sea` для всех доступных комнат;
+- `mapId` и `mapName` уже резолвятся через in-memory `MapTemplateRegistry`, который валидирует полный world package из `src/main/resources/worlds/*`;
+- в текущем production bundle зарегистрированы `caribbean-01` и `test-sandbox-01`; первая остаётся default map, а вторая уже доступна для dev/debug room creation без изменения внешнего room contract;
 - `POST /api/v1/rooms/{roomId}/join` уже реализован на backend как защищённый room admission endpoint;
 - backend стартует `/ws/game` в состоянии `lobby`, автоматически добавляет пользователя в `group:lobby`, после успешного REST join переводит сессию в `group:room:<roomId>` и server-authoritatively удерживает public chat isolation между lobby и rooms;
 - единственный канонический room enter flow для MVP: `POST /api/v1/rooms/{roomId}/join` -> `ROOM_JOINED` -> `SPAWN_ASSIGNED` -> `INIT_GAME_STATE`;
 - альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет;
-- initial spawn для current runtime уже вычисляется только backend'ом как random offset вокруг `(0, 0)` и проверяется по MVP bounds `x/z in [-30.0, 30.0]`, а transport shape `SPAWN_ASSIGNED` уже переиспользуется и для server-side respawn path с `reason=RESPAWN`.
+- initial spawn для current runtime уже вычисляется backend'ом из `MapTemplate.spawnPoints` и `spawnRules.playerSpawnRadius`, проверяется по `MapTemplate.bounds`, а transport shape `SPAWN_ASSIGNED` переиспользуется и для server-side respawn path с `reason=RESPAWN`.
+- `INIT_GAME_STATE` теперь несёт не только legacy `room`, но и map-driven `roomMeta`, собранный из room runtime и `MapTemplate`.
+- Backend также уже держит in-memory static catalogs из `src/main/resources/catalogs/*.json`: `ship classes`, `items`, `merchants`, `quests`; это заготовка под cargo/trade/quest flows без отдельной БД.
+- По состоянию на `TASK-027` основные игровые flow всё ещё сознательно работают без `Liquibase`/`H2`, только на process memory + resource files.
 
 Что это означает для следующих runtime-задач:
 1. Backend room endpoints и WS events должны реализовываться ровно под этот contract.

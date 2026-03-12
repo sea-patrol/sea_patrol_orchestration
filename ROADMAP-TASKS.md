@@ -363,7 +363,7 @@
   - Битая карта не попадает в available maps.
   - Для работы registry не нужен `H2`.
 
-### TASK-024
+### TASK-024 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-023`
@@ -374,7 +374,7 @@
   - Комнату можно создать с `mapId = caribbean-01`.
   - У карты есть enough metadata для лобби и room bootstrap.
 
-### TASK-025
+### TASK-025 - done
 - `Priority`: `P1`
 - `Track`: `Backend`
 - `Depends on`: `TASK-023`
@@ -384,7 +384,7 @@
   - Карта зарегистрирована в `MapTemplateRegistry`.
   - Её можно использовать для dev/debug комнат.
 
-### TASK-026
+### TASK-026 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-023`, `TASK-008`
@@ -395,7 +395,7 @@
   - `INIT_GAME_STATE`/room metadata опираются на данные карты.
   - Карта становится реальным source of truth для room bootstrap.
 
-### TASK-027
+### TASK-027 - done
 - `Priority`: `P1`
 - `Track`: `Backend`
 - `Depends on`: `TASK-023`
@@ -406,7 +406,7 @@
   - Пустой стенд поднимается и работает только на in-memory данных + resource files.
   - Нет зависимости на `Liquibase`/`H2` в основных игровых flow.
 
-### TASK-028
+### TASK-028 - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-024`, `TASK-014`
@@ -416,7 +416,7 @@
   - Пользователь видит, на какой карте создана комната.
   - Lobby UI не скрывает map context за общим названием комнаты.
 
-### TASK-029
+### TASK-029 - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-026`, `TASK-016`, `TASK-028`
@@ -846,3 +846,8 @@
 - loot/cargo/trade;
 - NPC, рыбалку и базовый quest loop;
 - при этом все игровые структуры данных до последней волны остаются in-memory.
+
+
+
+
+

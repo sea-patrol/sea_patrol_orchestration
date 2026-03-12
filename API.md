@@ -136,8 +136,8 @@ Response `200 OK` JSON (пример):
 - пустые комнаты исчезают из каталога не сразу: после того как в них не остаётся активных игроков и завершается reconnect grace последнего room-bound пользователя, backend ещё ждёт отдельный empty-room idle timeout.
 
 Текущее backend-ограничение:
-- `mapId` и `mapName` уже резолвятся через in-memory `MapTemplateRegistry`, который загружает world manifests из `src/main/resources/worlds/*`;
-- в текущем production bundle зарегистрирована только карта `caribbean-01`, поэтому room catalog пока возвращает `Caribbean Sea` для всех активных комнат.
+- `mapId` и `mapName` уже резолвятся через in-memory `MapTemplateRegistry`, который валидирует полный world package из `src/main/resources/worlds/*`;
+- в текущем production bundle зарегистрированы `caribbean-01` и `test-sandbox-01`; `caribbean-01` остаётся default map, а `test-sandbox-01` доступна для dev/debug комнат без изменения внешнего room contract.
 
 ### WebSocket: rooms state
 
@@ -187,7 +187,7 @@ Request JSON (все поля опциональны):
 - если `name` не передан, backend генерирует следующий `sandbox-N` и display name `Sandbox N`;
 - если `name` передан, backend строит `id` как slugified-форму имени, а `name` оставляет display label;
 - если `mapId` не передан, backend использует дефолтную карту MVP из `MapTemplateRegistry`;
-- backend валидирует `mapId` против своего in-memory `MapTemplateRegistry`; в текущем production bundle зарегистрирована только `caribbean-01`, поэтому остальные значения пока отбрасываются как `INVALID_MAP_ID`.
+- backend валидирует `mapId` против своего in-memory `MapTemplateRegistry`; сейчас доступны `caribbean-01` и `test-sandbox-01`, остальные значения отбрасываются как `INVALID_MAP_ID`.
 
 Response `201 Created` JSON (пример):
 ```json
@@ -338,7 +338,7 @@ Payload (пример):
 - initial spawn flow фиксируется как `ROOM_JOINED -> SPAWN_ASSIGNED -> INIT_GAME_STATE`;
 - respawn flow фиксируется как `SPAWN_ASSIGNED(reason=RESPAWN) -> дальнейший room snapshot/update`;
 - клиент не должен переводить локальный корабль в игровую комнату до получения `SPAWN_ASSIGNED`;
-- initial spawn вычисляется backend'ом как random offset вокруг `(0, 0)` и валидируется по текущим MVP bounds `x/z in [-30.0, 30.0]`;
+- initial spawn вычисляется backend'ом из `MapTemplate.spawnPoints` и `spawnRules.playerSpawnRadius`, а итоговые координаты валидируются по `MapTemplate.bounds` активной комнаты;
 - backend transport path для `RESPAWN` использует тот же payload shape и тот же server-authoritative spawn calculation, даже если полноценный death/combat caller остаётся задачей следующих wave'ов.
 
 ### Ключевые payload (сводно)
@@ -347,7 +347,7 @@ Payload (пример):
   - frontend → backend: `{ to: "group:lobby|group:room:<roomId>|global (legacy)|user:<username>", text: string }`
   - backend server-authoritatively переписывает любой public target в текущий scope пользователя (`group:lobby` или `group:room:<roomId>`).
   - backend → frontend: минимум `{ from: string, text: string, to: string }`
-- `INIT_GAME_STATE`: room/wind/players (backend-описание шире; frontend применяет минимум `players[]`)
+- `INIT_GAME_STATE`: legacy `room` + `roomMeta`/`wind`/`players` (frontend применяет минимум `players[]`, но room bootstrap metadata уже приходит из backend `MapTemplate`)
 - `UPDATE_GAME_STATE`: patch-обновления по игрокам (frontend применяет только присутствующие поля)
 
 ### Planned (MVP): Cannon fire / projectiles
