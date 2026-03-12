@@ -97,6 +97,14 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет;
 - initial spawn для current runtime уже вычисляется backend'ом из `MapTemplate.spawnPoints` и `spawnRules.playerSpawnRadius`, проверяется по `MapTemplate.bounds`, а transport shape `SPAWN_ASSIGNED` переиспользуется и для server-side respawn path с `reason=RESPAWN`.
 - `INIT_GAME_STATE` теперь несёт не только legacy `room`, но и map-driven `roomMeta`, собранный из room runtime и `MapTemplate`.
+- для `Wave 4` каноника `wind` теперь тоже фиксируется на уровне orchestration: payload имеет вид `{ angle, speed }`, `angle` хранится в радианах в плоскости `XZ` (`0 -> +X`, `PI / 2 -> +Z`), `wind` приходит и в `INIT_GAME_STATE`, и в `UPDATE_GAME_STATE`, а клиент не должен симулировать собственный authoritative ветер.
+- по состоянию на `TASK-031` backend уже держит этот `wind` как room-level authoritative state в `GameRoom` и рассылает один и тот же snapshot всем игрокам комнаты через `INIT_GAME_STATE` и `UPDATE_GAME_STATE`.
+- по состоянию на `TASK-032` frontend уже поднимает backend `wind` в `GameStateContext`, поэтому transport реально доходит до клиентского runtime state, а не остаётся неиспользованным полем в payload.
+- по состоянию на `TASK-033` backend ship movement тоже уже зависит от room wind state: ускорение судна рассчитывается server-authoritatively с учётом силы ветра и относительного угла между курсом корабля и направлением ветра.
+- по состоянию на `TASK-033B` backend уже реализует канонику `sailLevel`: это server-authoritative дискретное состояние `0..3`, где `0` означает полностью убранные паруса, `3` — полностью поднятые, а `PLAYER_INPUT.up/down` управляют именно уровнем парусов по rising-edge, а не прямым throttle/brake.
+- `sailLevel` уже приходит клиенту как часть player state в `INIT_GAME_STATE` и `UPDATE_GAME_STATE`, а по состоянию на `TASK-033C` frontend уже поднимает это поле в `GameStateContext` и показывает его в HUD без отдельной локальной authoritative модели парусов.
+- по состоянию на `TASK-034` frontend также уже даёт игроку более понятный wind HUD feedback: показываются сила и направление ветра, относительное положение ветра к текущему курсу корабля и краткая подсказка, почему ход судна сейчас выглядит сильным или слабым.
+- по состоянию на `TASK-035` предсказуемое вращение ветра по часовой стрелке уже стало backend-authoritative runtime behavior: угол меняется в комнате с фиксированной скоростью из backend config, а фронт по-прежнему просто применяет последний snapshot, пришедший от backend.
 - Backend также уже держит in-memory static catalogs из `src/main/resources/catalogs/*.json`: `ship classes`, `items`, `merchants`, `quests`; это заготовка под cargo/trade/quest flows без отдельной БД.
 - По состоянию на `TASK-027` основные игровые flow всё ещё сознательно работают без `Liquibase`/`H2`, только на process memory + resource files.
 

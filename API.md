@@ -341,14 +341,75 @@ Payload (пример):
 - initial spawn вычисляется backend'ом из `MapTemplate.spawnPoints` и `spawnRules.playerSpawnRadius`, а итоговые координаты валидируются по `MapTemplate.bounds` активной комнаты;
 - backend transport path для `RESPAWN` использует тот же payload shape и тот же server-authoritative spawn calculation, даже если полноценный death/combat caller остаётся задачей следующих wave'ов.
 
+### Wind state (каноника Wave 4 / MVP)
+
+Канонический transport payload ветра:
+```json
+{ "angle": 0.0, "speed": 10.0 }
+```
+
+Семантика:
+- `angle` — угол направления ветра в радианах в плоскости `XZ`;
+- backend и frontend считают этот угол одинаково: `0` смотрит вдоль `+X`, `PI / 2` смотрит вдоль `+Z`, а само направление получается из `Vector2(cos(angle), sin(angle))`;
+- `speed` — неотрицательная скалярная сила ветра в world units; это не вектор и не client-side коэффициент;
+- `wind` включается в `INIT_GAME_STATE` как initial authoritative room wind snapshot;
+- `wind` включается в `UPDATE_GAME_STATE` как последний authoritative room wind snapshot того же transport shape, а не как delta-патч;
+- клиент не должен локально вычислять собственный authoritative wind state и не должен выводить направление ветра из движения корабля.
+
+Runtime policy после `TASK-035`:
+- `TASK-031` делает wind state полноценной частью состояния комнаты;
+- backend теперь вращает направление ветра по часовой стрелке как backend-authoritative room policy;
+- MVP default speed задаётся через backend config `game.room.wind-rotation-speed` и сейчас равна `0.17453292 rad/s` (примерно `10°/s`);
+- frontend по-прежнему не должен предполагать локальную анимацию ветра и должен просто применять последнее значение, пришедшее с backend.
+
+Текущий runtime status после `TASK-031`:
+- backend уже хранит authoritative `wind` на уровне `GameRoom`;
+- `INIT_GAME_STATE` и `UPDATE_GAME_STATE` уже несут один и тот же room-level `wind` transport shape для всех игроков комнаты.
+- после `TASK-035` этот `wind` уже меняется предсказуемо по часовой стрелке в backend runtime, а не случайным шумом.
+- после `TASK-032` frontend поднимает этот `wind` в свой game runtime state и больше не должен держать отдельный локальный источник ветра в основном path обработки WS-сообщений.
+- после `TASK-034` frontend дополнительно использует этот же state для HUD feedback: показывает игроку силу/направление ветра и относительную подсказку по курсу, не вводя отдельный authoritative wind model.
+
+### Sail level state (каноника Wave 4 / MVP)
+
+Каноническая модель парусов для MVP:
+- `sailLevel` — server-authoritative дискретное состояние корабля;
+- допустимые значения: `0 | 1 | 2 | 3`;
+- `0` = паруса полностью убраны, `3` = все паруса подняты;
+- стартовое значение для нового room player в MVP: `3`.
+
+Семантика управления:
+- `PLAYER_INPUT.up` и `PLAYER_INPUT.down` больше не должны трактоваться как "газ/тормоз";
+- `PLAYER_INPUT.up` на rising-edge повышает `sailLevel` на `+1`;
+- `PLAYER_INPUT.down` на rising-edge понижает `sailLevel` на `-1`;
+- удержание клавиши не должно бесконечно инкрементировать/декрементировать уровень в каждом tick;
+- итоговый `sailLevel` всегда клампится в диапазон `0..3`.
+
+Семантика синхронизации:
+- `sailLevel` приходит клиенту как часть player state в `INIT_GAME_STATE`;
+- `sailLevel` приходит клиенту как часть player state в `UPDATE_GAME_STATE`;
+- клиент не должен держать отдельный authoritative sail state вне backend player state.
+
+Текущий runtime status после `TASK-033B`:
+- backend уже хранит `sailLevel` на уровне player/ship runtime и клампит его в диапазон `0..3`;
+- `PLAYER_INPUT.up/down` на backend уже обрабатываются как rising-edge команды изменения уровня парусов;
+- `INIT_GAME_STATE` и `UPDATE_GAME_STATE` уже несут `sailLevel` как часть player state;
+- backend уже использует `sailLevel` в формуле тяги вместе с room `wind`.
+
+Текущий frontend status после `TASK-033C`:
+- frontend уже поднимает `sailLevel` из backend `INIT_GAME_STATE` / `UPDATE_GAME_STATE` в свой game state;
+- HUD уже показывает текущий уровень парусов как отражение backend-authoritative player state;
+- frontend по-прежнему не держит отдельную локальную authoritative модель парусов.
+
 ### Ключевые payload (сводно)
 - `PLAYER_INPUT`: `{ left: boolean, right: boolean, up: boolean, down: boolean }`
+  - `left/right` продолжают означать поворот корабля;
+  - каноника `Wave 4`: `up/down` используются для подъёма/опускания парусов по rising-edge, а не как прямой throttle/brake input.
 - `CHAT_MESSAGE`:
   - frontend → backend: `{ to: "group:lobby|group:room:<roomId>|global (legacy)|user:<username>", text: string }`
   - backend server-authoritatively переписывает любой public target в текущий scope пользователя (`group:lobby` или `group:room:<roomId>`).
   - backend → frontend: минимум `{ from: string, text: string, to: string }`
-- `INIT_GAME_STATE`: legacy `room` + `roomMeta`/`wind`/`players` (frontend применяет минимум `players[]`, но room bootstrap metadata уже приходит из backend `MapTemplate`)
-- `UPDATE_GAME_STATE`: patch-обновления по игрокам (frontend применяет только присутствующие поля)
+- `INIT_GAME_STATE`: legacy `room` + `roomMeta`/`wind`/`players`, где `wind` уже является initial authoritative snapshot комнаты, а player state канонически расширяется полем `sailLevel`
+- `UPDATE_GAME_STATE`: player updates + текущий authoritative `wind` того же payload shape; backend runtime уже включает `sailLevel` в player state этого сообщения
 
 ### Planned (MVP): Cannon fire / projectiles
 

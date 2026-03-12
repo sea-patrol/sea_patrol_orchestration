@@ -1074,6 +1074,7 @@ Runtime data:
 `MENU_OPEN`
 - открыто игровое меню.
 - Управление кораблём блокируется.
+- Для ближайшего follow-up slice меню должно уметь минимум две вещи: штатный `Exit to lobby` для выхода из комнаты без relogin и dev-only toggle `Debug`, который включает/выключает debug UI runtime-переключателем.
 
 `RECONNECTING`
 - соединение потеряно, клиент пытается восстановить session binding.
@@ -1092,6 +1093,7 @@ Runtime data:
 - `WINDOW_FOCUS -> SAILING` по `I/J/M/Esc`
 - `SAILING -> MENU_OPEN` по `Esc`
 - `MENU_OPEN -> SAILING` по `Esc`
+- `MENU_OPEN -> LOBBY` после успешного authoritative leave-room flow
 - `SAILING -> RECONNECTING` при потере соединения
 - `RECONNECTING -> SAILING` при успешном reconnect
 - `RECONNECTING -> LOBBY` или `LOADING` если reconnect grace истёк
@@ -1103,6 +1105,7 @@ Runtime data:
 - `CHAT_FOCUS` и `WINDOW_FOCUS` не должны пересекаться.
 - `RECONNECTING` имеет приоритет над обычными окнами.
 - `MENU_OPEN` должен закрывать `WINDOW_FOCUS` или не открываться поверх него без явного правила.
+- Кнопка `Debug` в игровом меню не должна быть видна в production UI и должна существовать только в debug/dev режиме.
 
 ## 20) Explicit seed strategy (минимально необходимая)
 

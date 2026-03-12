@@ -430,7 +430,7 @@
 
 ## Wave 4 — Ветер, паруса и движение корабля
 
-### TASK-030
+### TASK-030 - done
 - `Priority`: `P0`
 - `Track`: `Shared`
 - `Depends on`: `TASK-026`
@@ -440,7 +440,7 @@
   - В `API.md` нет двусмысленности по wind payload.
   - Frontend/backend одинаково понимают угол, скорость и update semantics.
 
-### TASK-031
+### TASK-031 - done
 - `Priority`: `P0`
 - `Track`: `Backend`
 - `Depends on`: `TASK-030`, `TASK-026`
@@ -450,7 +450,7 @@
   - Клиент получает wind state из backend.
   - Один и тот же wind state согласован для всех игроков комнаты.
 
-### TASK-032
+### TASK-032 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-031`
@@ -460,7 +460,7 @@
   - Frontend использует только backend wind state.
   - Изменение ветра реально доходит до UI/runtime state.
 
-### TASK-033
+### TASK-033 - done
 - `Priority`: `P1`
 - `Track`: `Backend`
 - `Depends on`: `TASK-031`
@@ -470,7 +470,41 @@
   - Судно движется по-разному при попутном, боковом и встречном ветре.
   - Модель остаётся предсказуемой и тестируемой.
 
-### TASK-034
+### TASK-033A - done
+- `Priority`: `P1`
+- `Track`: `Shared`
+- `Depends on`: `TASK-030`, `TASK-033`
+- `Goal`: Зафиксировать канонический `sailLevel` contract для MVP.
+- `Scope`: Уточнить в orchestration docs, что `sailLevel` является server-authoritative дискретным состоянием корабля (`0..3`), стартует с `3`, меняется по rising-edge от `PLAYER_INPUT.up/down` (`+1/-1`) и синхронизируется клиенту в `INIT_GAME_STATE` / `UPDATE_GAME_STATE` как часть player state.
+- `Acceptance`:
+  - В `API.md` и связанных docs нет двусмысленности по уровням парусов `0..3`.
+  - Ясно описано, что `0` = паруса полностью убраны, `3` = все паруса подняты.
+  - Ясно описано, что `PLAYER_INPUT.up/down` не являются «газом/тормозом», а управляют уровнем парусов по rising-edge.
+
+### TASK-033B - done
+- `Priority`: `P1`
+- `Track`: `Backend`
+- `Depends on`: `TASK-033A`, `TASK-033`
+- `Goal`: Реализовать server-authoritative `sailLevel` на backend.
+- `Scope`: Добавить в runtime корабля дискретный `sailLevel` (`0..3`), стартовое значение `3`, обработку `PLAYER_INPUT.up/down` как `+1/-1` уровня по rising-edge, использование `sailLevel` в формуле тяги и синхронизацию этого состояния в room messages.
+- `Acceptance`:
+  - При `sailLevel = 0` корабль не набирает ход от парусов.
+  - При `sailLevel = 1..3` тяга от ветра и парусов возрастает ступенчато.
+  - Уровень парусов не выходит за границы `0..3`.
+  - Есть backend tests на edge handling и влияние `sailLevel` на движение.
+
+### TASK-033C - done
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-033A`, `TASK-032`, `TASK-033B`
+- `Goal`: Научить frontend отображать и использовать backend `sailLevel`.
+- `Scope`: Поднять `sailLevel` в клиентский game state как часть player state, показывать игроку текущий уровень парусов (`0..3`) и объяснять связь между клавишами `вперед/назад` и поднятием/опусканием парусов без введения локального authoritative sail state.
+- `Acceptance`:
+  - Frontend получает `sailLevel` из backend `INIT_GAME_STATE` / `UPDATE_GAME_STATE`.
+  - Игрок видит текущий уровень парусов в HUD.
+  - UI не создаёт отдельную локальную модель парусов, противоречащую backend state.
+
+### TASK-034 - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-032`, `TASK-033`
@@ -480,7 +514,7 @@
   - Игрок видит направление и силу ветра.
   - Изменение поведения судна не выглядит «магическим» без UI-подсказки.
 
-### TASK-035
+### TASK-035 - done
 - `Priority`: `P1`
 - `Track`: `Backend`
 - `Depends on`: `TASK-031`, `TASK-033`
@@ -489,6 +523,55 @@
 - `Acceptance`:
   - Ветер меняется предсказуемо и одинаково для всех игроков комнаты.
   - Клиент видит, что направление ветра постепенно поворачивается по часовой стрелке.
+
+---
+
+## Wave 4.5 — Меню комнаты, выход в лобби и debug toggle
+
+### TASK-035A
+- `Priority`: `P1`
+- `Track`: `Shared`
+- `Depends on`: `TASK-011`, `TASK-017D`
+- `Goal`: Зафиксировать канонический room menu / leave-room contract.
+- `Scope`: Уточнить в orchestration docs, как игрок выходит из комнаты обратно в лобби через меню: какой endpoint/flow используется, как backend переводит active WS session из room обратно в `lobby`, какие room/chat/catalog события считаются authoritative и что должен сделать frontend с `RoomSession`.
+- `Acceptance`:
+  - В `API.md` нет двусмысленности по flow `Room -> Menu -> Exit -> Lobby`.
+  - Ясно зафиксировано, остаётся ли тот же WS connect и как меняется session binding.
+  - Понятно, какие события/ответы должен ждать frontend после успешного leave.
+
+### TASK-035B
+- `Priority`: `P1`
+- `Track`: `Backend`
+- `Depends on`: `TASK-035A`, `TASK-021`
+- `Goal`: Реализовать backend leave-room flow без разрыва всей игровой сессии.
+- `Scope`: Добавить server-authoritative room leave endpoint/flow, который убирает игрока из runtime комнаты, переводит его chat/session binding обратно в `lobby`, обновляет room catalog и не требует полного relogin/rehydration.
+- `Acceptance`:
+  - Игрок может штатно выйти из комнаты, не закрывая всю auth/WS session.
+  - После leave backend переводит пользователя обратно в `group:lobby` и lobby room stream.
+  - Room cleanup/counter logic корректно отрабатывает после leave.
+  - Есть backend tests на `room -> lobby` transition.
+
+### TASK-035C
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-035A`, `TASK-035B`, `TASK-036`
+- `Goal`: Довести menu modal до реального room-exit UX.
+- `Scope`: В `MENU_OPEN` показать модальное окно с кнопкой `Выйти`, которая запускает authoritative leave-room flow и возвращает игрока в `/lobby`, очищая stale room UI state.
+- `Acceptance`:
+  - В меню комнаты есть явная кнопка `Выйти`.
+  - После успешного leave пользователь оказывается в рабочем lobby flow, а не в сломанном промежуточном состоянии.
+  - Ошибки leave показываются в UI, не оставляя пользователя на пустом экране.
+
+### TASK-035D
+- `Priority`: `P1`
+- `Track`: `Frontend`
+- `Depends on`: `TASK-036`
+- `Goal`: Добавить dev-only toggle для debug UI из меню комнаты.
+- `Scope`: В `MENU_OPEN` показывать кнопку `Дебаг` только в debug/dev режиме и дать ей возможность включать/выключать overlay/debug layer runtime-переключателем без отдельной production-сборки.
+- `Acceptance`:
+  - Кнопка `Дебаг` не видна в production UI.
+  - В debug/dev режиме игрок может включить и выключить debug layer прямо из меню.
+  - Переключение не требует пересборки frontend и не ломает обычный gameplay HUD.
 
 ---
 
