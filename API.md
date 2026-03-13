@@ -285,6 +285,39 @@ Response `200 OK` JSON (пример):
 - `409` -> `{ "errors": [{ "code": "ROOM_FULL", "message": "Room is full" }] }`
 - `409` -> `{ "errors": [{ "code": "LOBBY_SESSION_REQUIRED", "message": "Active lobby WebSocket session is required" }] }`
 
+### REST: room leave
+
+Аутентификация: требуется `Authorization: Bearer <jwt>`.
+
+#### `POST /api/v1/rooms/{roomId}/leave`
+Контракт зафиксирован в `TASK-035A` и реализован на backend в `TASK-035B`. Frontend menu integration остаётся следующим шагом.
+
+Request body:
+```json
+{}
+```
+
+Response `200 OK` JSON (пример):
+```json
+{
+  "roomId": "sandbox-1",
+  "status": "LEFT",
+  "nextState": "LOBBY"
+}
+```
+
+Правила:
+- leave возможен только для пользователя, у которого есть активная WS-сессия и текущий room binding на тот же `roomId`;
+- после success backend удаляет игрока из runtime комнаты, переводит chat membership из `group:room:<roomId>` обратно в `group:lobby` и восстанавливает lobby room stream на той же WS-сессии;
+- после REST `200 OK` backend отправляет этой же сессии `ROOMS_SNAPSHOT` как первый authoritative lobby snapshot после возврата;
+- frontend menu flow должен выполнять cleanup local room/game state и переход на `/lobby` сразу после подтверждённого REST success, а не по одному лишь локальному нажатию на кнопку;
+- отдельный WS message type `ROOM_LEFT` в MVP не вводится: authoritative success/failure остаётся REST-ответом, а lobby WS-состояние подтверждается `ROOMS_SNAPSHOT`.
+
+Ошибки (каноника MVP):
+- `404` -> `{ "errors": [{ "code": "ROOM_NOT_FOUND", "message": "Room not found" }] }`
+- `409` -> `{ "errors": [{ "code": "ROOM_SESSION_REQUIRED", "message": "Active room WebSocket session is required" }] }`
+- `409` -> `{ "errors": [{ "code": "ROOM_SESSION_MISMATCH", "message": "Player is not bound to this room" }] }`
+
 Server -> Client по уже открытому WS:
 - `ROOM_JOINED` payload повторяет успешный REST response:
 ```json
@@ -312,8 +345,9 @@ Server -> Client по уже открытому WS:
   - сервер автоматически добавляет пользователя в `group:lobby` при WS-подключении.
 - Чат комнаты (изолирован по `roomId`): `to="group:room:<roomId>"`.
   - после успешного REST `join` сервер переводит пользователя из `group:lobby` в `group:room:<roomId>`.
+  - после успешного REST `leave` сервер переводит пользователя обратно из `group:room:<roomId>` в `group:lobby`.
   - клиентские `CHAT_JOIN` / `CHAT_LEAVE` не считаются каноническим способом смены lobby/room scope и runtime их не использует.
-  - отдельный `leave` flow не входит в канонику `TASK-004`.
+  - отдельный `leave` flow теперь фиксируется как follow-up contract в `TASK-035A`.
 
 ### Spawn assignment
 

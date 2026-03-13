@@ -94,6 +94,8 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - `POST /api/v1/rooms/{roomId}/join` уже реализован на backend как защищённый room admission endpoint;
 - backend стартует `/ws/game` в состоянии `lobby`, автоматически добавляет пользователя в `group:lobby`, после успешного REST join переводит сессию в `group:room:<roomId>` и server-authoritatively удерживает public chat isolation между lobby и rooms;
 - единственный канонический room enter flow для MVP: `POST /api/v1/rooms/{roomId}/join` -> `ROOM_JOINED` -> `SPAWN_ASSIGNED` -> `INIT_GAME_STATE`;
+- room-menu flow уже зафиксирован и реализован на backend: `POST /api/v1/rooms/{roomId}/leave` -> REST `200 { roomId, status: LEFT, nextState: LOBBY }` -> backend rebinding той же WS-сессии обратно в `lobby` -> `ROOMS_SNAPSHOT`;
+- по состоянию на `TASK-035C` frontend тоже уже использует этот flow из room menu: после confirmed REST success он сразу очищает stale room state и переводит пользователя на `/lobby` без logout, а `LobbyPage` дополнительно не пытается резюмить старую комнату, если пользователь пришёл туда через explicit `Exit to lobby`;
 - альтернативного WS-only flow для `join` и альтернативного client-side spawn flow в канонике MVP нет;
 - initial spawn для current runtime уже вычисляется backend'ом из `MapTemplate.spawnPoints` и `spawnRules.playerSpawnRadius`, проверяется по `MapTemplate.bounds`, а transport shape `SPAWN_ASSIGNED` переиспользуется и для server-side respawn path с `reason=RESPAWN`.
 - `INIT_GAME_STATE` теперь несёт не только legacy `room`, но и map-driven `roomMeta`, собранный из room runtime и `MapTemplate`.
@@ -113,6 +115,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 2. Frontend lobby UI должен считать `ROOMS_UPDATED` полным snapshot, а не delta-патчем.
 3. Frontend room init должен ждать `SPAWN_ASSIGNED` как authoritative spawn source.
 4. Frontend reconnect UI уже может опираться на backend room resume в пределах `game.room.reconnect-grace-period` (MVP default: `15s`): при reconnect backend восстанавливает ту же room binding и повторно шлёт `ROOM_JOINED` + `INIT_GAME_STATE`, а после истечения окна переводит пользователя в новый lobby session flow.
+5. Room menu leave flow должен оставаться REST-authoritative: frontend не должен «угадывать» выход из комнаты локально без успешного `POST /api/v1/rooms/{roomId}/leave`.
 
 ## Где в коде смотреть интеграцию
 Frontend:

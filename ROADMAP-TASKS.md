@@ -528,7 +528,7 @@
 
 ## Wave 4.5 — Меню комнаты, выход в лобби и debug toggle
 
-### TASK-035A
+### TASK-035A - done
 - `Priority`: `P1`
 - `Track`: `Shared`
 - `Depends on`: `TASK-011`, `TASK-017D`
@@ -539,7 +539,7 @@
   - Ясно зафиксировано, остаётся ли тот же WS connect и как меняется session binding.
   - Понятно, какие события/ответы должен ждать frontend после успешного leave.
 
-### TASK-035B
+### TASK-035B - done
 - `Priority`: `P1`
 - `Track`: `Backend`
 - `Depends on`: `TASK-035A`, `TASK-021`
@@ -551,7 +551,7 @@
   - Room cleanup/counter logic корректно отрабатывает после leave.
   - Есть backend tests на `room -> lobby` transition.
 
-### TASK-035C
+### TASK-035C - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-035A`, `TASK-035B`, `TASK-036`
@@ -562,7 +562,7 @@
   - После успешного leave пользователь оказывается в рабочем lobby flow, а не в сломанном промежуточном состоянии.
   - Ошибки leave показываются в UI, не оставляя пользователя на пустом экране.
 
-### TASK-035D
+### TASK-035D - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-036`
