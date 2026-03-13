@@ -577,7 +577,7 @@
 
 ## Wave 5 — Игровой экран, HUD и базовые интеракции в комнате
 
-### TASK-036
+### TASK-036 - done
 - `Priority`: `P0`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-007`, `TASK-020`, `TASK-032`
@@ -587,7 +587,7 @@
   - HUD живёт поверх gameplay scene.
   - В `SAILING` mode пользователь видит основной игровой интерфейс.
 
-### TASK-037
+### TASK-037 - done
 - `Priority`: `P1`
 - `Track`: `Frontend`
 - `Depends on`: `TASK-036`
