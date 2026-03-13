@@ -230,7 +230,7 @@ Backend (по документации) ожидает входящие tuple и
 ### Message types (пересечение по текущим описаниям)
 - Chat: `CHAT_MESSAGE`, `CHAT_JOIN`, `CHAT_LEAVE` (последние два остаются только для legacy compatibility и не управляют room membership)
 - Lobby/rooms: `ROOMS_SNAPSHOT`, `ROOMS_UPDATED`, `ROOM_JOINED`, `ROOM_JOIN_REJECTED`
-- Game: `PLAYER_INPUT`, `PLAYER_JOIN`, `PLAYER_LEAVE`, `SPAWN_ASSIGNED`, `INIT_GAME_STATE`, `UPDATE_GAME_STATE`
+- Game: `PLAYER_INPUT`, `PLAYER_JOIN`, `PLAYER_LEAVE`, `SPAWN_ASSIGNED`, `INIT_GAME_STATE`, `UPDATE_GAME_STATE`, `WORLD_ENTITY_SPAWNED`, `WORLD_ENTITY_UPDATED`, `WORLD_ENTITY_DESPAWNED`
 
 ### Rooms / lobby + join
 
@@ -444,6 +444,34 @@ Runtime policy после `TASK-035`:
   - backend → frontend: минимум `{ from: string, text: string, to: string }`
 - `INIT_GAME_STATE`: legacy `room` + `roomMeta`/`wind`/`players`, где `wind` уже является initial authoritative snapshot комнаты, а player state канонически расширяется полем `sailLevel`
 - `UPDATE_GAME_STATE`: player updates + текущий authoritative `wind` того же payload shape; backend runtime уже включает `sailLevel` в player state этого сообщения
+
+### World entities (каноника Wave 5 / TASK-038)
+
+Единый transport shape для non-player world entities:
+```json
+{
+  "entityId": "poi:sandbox-1:port-royal",
+  "entityType": "POI",
+  "archetypeId": "poi.port",
+  "state": "IDLE",
+  "x": 120.0,
+  "z": -45.0,
+  "angle": 1.57
+}
+```
+
+Каноника:
+- backend использует один и тот же transport path для `POI`, `crates`, `NPC` и future `projectiles`;
+- `entityId` обязан быть стабильным в рамках жизни конкретной комнаты;
+- `WORLD_ENTITY_SPAWNED` создаёт или initial-sync'ит сущность этим payload shape;
+- `WORLD_ENTITY_UPDATED` обновляет уже существующую сущность тем же payload shape;
+- `WORLD_ENTITY_DESPAWNED` удаляет сущность payload'ом вида `{ "entityId": "..." }`;
+- `INIT_GAME_STATE` пока не расширяется отдельным списком world entities;
+- initial sync для уже существующих room entities делается повтором `WORLD_ENTITY_SPAWNED` сразу после `INIT_GAME_STATE`, чтобы initial sync и дальнейшие delta updates шли по одной transport модели.
+
+Текущий runtime status после `TASK-038`:
+- backend foundation для world-entity transport уже реализован;
+- production runtime ещё не заселяет комнаты реальными `POI`/crate/NPC объектами автоматически; это остаётся следующим backend шагом `TASK-039`.
 
 ### Planned (MVP): Cannon fire / projectiles
 

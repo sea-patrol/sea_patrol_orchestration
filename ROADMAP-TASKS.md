@@ -597,7 +597,7 @@
   - Chat input не конфликтует с ship controls.
   - Большие окна блокируют обычное sailing input.
 
-### TASK-038
+### TASK-038 - done
 - `Priority`: `P1`
 - `Track`: `Backend`
 - `Depends on`: `TASK-026`

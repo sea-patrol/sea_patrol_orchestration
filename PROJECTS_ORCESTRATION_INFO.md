@@ -109,6 +109,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 - `sailLevel` уже приходит клиенту как часть player state в `INIT_GAME_STATE` и `UPDATE_GAME_STATE`, а по состоянию на `TASK-033C` frontend уже поднимает это поле в `GameStateContext` и показывает его в HUD без отдельной локальной authoritative модели парусов.
 - по состоянию на `TASK-034` frontend также уже даёт игроку более понятный wind HUD feedback: показываются сила и направление ветра, относительное положение ветра к текущему курсу корабля и краткая подсказка, почему ход судна сейчас выглядит сильным или слабым.
 - по состоянию на `TASK-035` предсказуемое вращение ветра по часовой стрелке уже стало backend-authoritative runtime behavior: угол меняется в комнате с фиксированной скоростью из backend config, а фронт по-прежнему просто применяет последний snapshot, пришедший от backend.
+- по состоянию на `TASK-038` backend уже получил базовый transport foundation для world entities: в room runtime есть stable `entityId` и отдельные события `WORLD_ENTITY_SPAWNED` / `WORLD_ENTITY_UPDATED` / `WORLD_ENTITY_DESPAWNED`, причём initial sync существующих объектов комнаты тоже идёт этим же path сразу после `INIT_GAME_STATE`.
 - Backend также уже держит in-memory static catalogs из `src/main/resources/catalogs/*.json`: `ship classes`, `items`, `merchants`, `quests`; это заготовка под cargo/trade/quest flows без отдельной БД.
 - По состоянию на `TASK-027` основные игровые flow всё ещё сознательно работают без `Liquibase`/`H2`, только на process memory + resource files.
 
@@ -119,6 +120,7 @@ Room/lobby contract для MVP теперь тоже зафиксирован н
 4. Frontend reconnect UI уже может опираться на backend room resume в пределах `game.room.reconnect-grace-period` (MVP default: `15s`): при reconnect backend восстанавливает ту же room binding и повторно шлёт `ROOM_JOINED` + `INIT_GAME_STATE`, а после истечения окна переводит пользователя в новый lobby session flow.
 5. Room menu leave flow должен оставаться REST-authoritative: frontend не должен «угадывать» выход из комнаты локально без успешного `POST /api/v1/rooms/{roomId}/leave`.
 6. Любые будущие изменения cross-tab логики обязаны сохранять разделение `local-only reset` и `authoritative clear persisted room session`; если вторичная вкладка того же пользователя снова начнёт удалять `room-session:<username>`, активная вкладка потеряет право применять game updates и regress станет пользовательски заметным сразу.
+7. Любые будущие room objects beyond players должны идти через единый world-entity transport path; не нужно заводить отдельный ad-hoc список `poi[]`/`crate[]` внутри `INIT_GAME_STATE`, пока нет очень сильной причины переписать канонику.
 
 ## Где в коде смотреть интеграцию
 Frontend:
